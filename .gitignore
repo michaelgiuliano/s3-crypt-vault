@@ -9,3 +9,6 @@ __pycache__/
 # Virtual Env
 venv/
 .venv/
+
+# LocalStack data
+volume/
