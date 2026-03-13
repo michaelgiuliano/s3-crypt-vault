@@ -1,11 +1,15 @@
-# Python
-__pycache__/
-*.py[cod]
-
 # Environment & Secrets
 .env
 *.key
 
+# Python
+__pycache__/
+tests/__pycache__/
+*.py[cod]
+
 # Virtual Env
 venv/
 .venv/
+
+# LocalStack data
+volume/
