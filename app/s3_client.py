@@ -1,9 +1,9 @@
-import os
 import boto3
 from dotenv import load_dotenv
+from app.config import Settings
 
 
-load_dotenv()
+settings = Settings()
 
 
 class S3Client:
@@ -14,21 +14,19 @@ class S3Client:
 
     def __init__(self):
 
-        self.bucket = os.getenv("S3_BUCKET_NAME")
-        region = os.getenv("AWS_REGION")
-
-        use_localstack = os.getenv("USE_LOCALSTACK", "false").lower() == "true"
+        self.bucket = settings.S3_BUCKET_NAME
+        region = settings.AWS_REGION
 
         endpoint_url = None
-        if use_localstack:
-            endpoint_url = "http://localhost:4566"
+        if settings.USE_LOCALSTACK:
+            endpoint_url = settings.LOCALSTACK_ENDPOINT
 
         self.client = boto3.client(
             "s3",
             region_name=region,
             endpoint_url=endpoint_url,
-            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
         )
 
     def upload_bytes(self, key: str, data: bytes):
@@ -63,7 +61,7 @@ class S3Client:
 
         if not self.bucket_exists():
 
-            region = os.getenv("AWS_REGION")
+            region = settings.AWS_REGION
 
             self.client.create_bucket(
                 Bucket=self.bucket,
