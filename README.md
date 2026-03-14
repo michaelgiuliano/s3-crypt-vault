@@ -52,3 +52,28 @@ USE_LOCALSTACK=true
 ```bash
 pytest tests/
 ```
+
+## Encryption Architecture
+
+All files are encrypted locally before being uploaded to AWS S3.
+
+The project uses **AES-256-GCM**, an authenticated encryption mode that ensures:
+
+- **Confidentiality** – data cannot be read without the key
+- **Integrity** – tampering with ciphertext is detected
+- **Authenticity** – decryption fails if data is modified
+
+### Encryption Flow
+
+1. File is read locally
+2. A random 12-byte nonce is generated
+3. AES-256-GCM encrypts the file
+4. The nonce is prepended to the ciphertext
+5. The encrypted file is uploaded to S3
+
+### Tamper Detection
+
+AES-GCM provides built-in authentication.  
+If even a single bit of ciphertext is modified, decryption will raise an error.
+
+This behavior is verified by `test_tamper_detection()`.
