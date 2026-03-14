@@ -1,6 +1,7 @@
 import pytest
 from app.encryptor import FileEncryptor
 
+
 def test_encryption_decryption_workflow():
     """Verify that data remains consistent after an enc/dec cycle."""
     encryptor = FileEncryptor()
@@ -12,6 +13,7 @@ def test_encryption_decryption_workflow():
     decrypted = encryptor.decrypt(encrypted)
     assert decrypted == secret_message
 
+
 def test_key_persistence(tmp_path):
     """Verify the key can be saved and reloaded using a temporary directory."""
     key_file = tmp_path / "test.key"
@@ -21,6 +23,7 @@ def test_key_persistence(tmp_path):
     # Load into a new instance
     new_encryptor = FileEncryptor.load_key(key_file)
     assert original_encryptor.key == new_encryptor.key
+
 
 def test_tamper_detection():
     """Verify that GCM detects if even a single bit of ciphertext changes."""

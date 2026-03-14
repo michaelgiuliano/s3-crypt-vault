@@ -2,6 +2,7 @@ import boto3
 import pytest
 from botocore.exceptions import ClientError
 
+
 @pytest.fixture
 def s3_client():
     """
@@ -22,6 +23,7 @@ def s3_client():
         client.delete_bucket(Bucket="test-vault")
     except ClientError:
         pass
+
 
 def test_s3_connection_localstack(s3_client):
     region = "eu-north-1"
