@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+
 class FileEncryptor:
     """
     Handles AES-256 GCM encryption and decryption.
