@@ -4,8 +4,10 @@
 
 # Python
 __pycache__/
+.pytest_cache/
 tests/__pycache__/
 *.py[cod]
+*.pyc
 
 # Virtual Env
 venv/
@@ -13,3 +15,8 @@ venv/
 
 # LocalStack data
 volume/
+
+# OS
+.DS_Store
+
+*.log
