@@ -37,6 +37,34 @@ def create_bucket():
 
 
 @app.command()
+def list_buckets():
+    """List available S3 buckets."""
+
+    s3 = S3Client()
+
+    buckets = s3.list_buckets()
+
+    for b in buckets:
+        typer.echo(b)
+
+
+@app.command()
+def list_files():
+    """List encrypted files in the configured bucket."""
+
+    s3 = S3Client()
+
+    if not s3.bucket_exists():
+        typer.echo(f"Bucket '{s3.bucket}' does not exist.")
+        raise typer.Exit(1)
+
+    objects = s3.list_objects()
+
+    for obj in objects:
+        typer.echo(obj)
+
+
+@app.command()
 def upload(file: str, key_path: str = "master.key"):
     """
     Encrypt a file and upload it to S3.

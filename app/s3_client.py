@@ -66,3 +66,11 @@ class S3Client:
                 Bucket=self.bucket,
                 CreateBucketConfiguration={"LocationConstraint": region},
             )
+
+    def list_buckets(self):
+        response = self.client.list_buckets()
+        return [b["Name"] for b in response.get("Buckets", [])]
+
+    def list_objects(self):
+        response = self.client.list_objects_v2(Bucket=self.bucket)
+        return [o["Key"] for o in response.get("Contents", [])]
