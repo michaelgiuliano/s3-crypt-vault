@@ -1,0 +1,21 @@
+[project]
+name = "s3-crypt-vault"
+version = "0.1.0"
+description = "CLI tool for client-side encrypted AWS S3 storage."
+authors = [{name = "Michael Giuliano"}]
+readme = "README.md"
+requires-python = ">=3.14"
+
+dependencies = [
+    "boto3",
+    "cryptography",
+    "python-dotenv",
+    "typer",
+]
+
+[project.scripts]
+s3vault = "app.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["volume*", "tests*"]

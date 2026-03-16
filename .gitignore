@@ -1,22 +1,20 @@
-# Environment & Secrets
-.env
-*.key
-
 # Python
 __pycache__/
-.pytest_cache/
-tests/__pycache__/
 *.py[cod]
 *.pyc
+.pytest_cache/
+*.egg-info/
 
-# Virtual Env
+# Virtual environments
 venv/
 .venv/
 
-# LocalStack data
+# Environment & secrets
+.env
+*.key
+
+# LocalStack
 volume/
 
 # OS
 .DS_Store
-
-*.log
