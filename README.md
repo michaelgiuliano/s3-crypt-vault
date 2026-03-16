@@ -1,90 +1,170 @@
 # S3 Crypt Vault
+![CI](https://github.com/michaelgiuliano/s3-crypt-vault/actions/workflows/ci.yml/badge.svg)
 
-A Python-based CLI tool for client-side encrypted AWS S3 storage.
+A Python CLI tool for **zero-knowledge encrypted storage on AWS S3**.
 
 
 ## Project Overview
 
-This project demonstrates a **Zero-Knowledge architecture**. Files are encrypted locally using **AES-256 GCM** before being transmitted to AWS S3. Even if the S3 bucket is compromised, the data remains unreadable without the local master key. This ensures that the Cloud provider never sees the plaintext data.
+This project demonstrates a Zero-Knowledge architecture for cloud storage.
+
+Files are encrypted locally using AES-256-GCM before being transmitted to AWS S3. Even if the S3 bucket is compromised, the stored data remains unreadable without the local encryption key.
+
+The cloud provider never has access to plaintext data, ensuring that encryption and decryption always occur on the client side.
 
 
-## Security Features
+## Features
 
-* **Client-Side Encryption:** Uses the `cryptography` library (AES-GCM) to ensure both confidentiality and data integrity.
-* **Zero-Knowledge:** The encryption key is generated and stored locally; it never leaves the user's environment.
-* **Secure Credential Management:** No hardcoded secrets. It fully supports environment variables and follows AWS security best practices.
-* **Local Emulation:** Integrated with **LocalStack** for secure, cost-free local development and testing.
-
-
-## Technical Stack & CI/CD
-
-* **Language:** Python 3.14+
-* **Cloud Provider:** AWS (S3)
-* **Infrastructure Emulation:** LocalStack & Docker Compose
-* **Automation:** GitHub Actions (CI) for automated linting and integration testing.
+- **Client-side encryption** using *AES-256-GCM*.
+- **Zero-knowledge design** – the encryption key never leaves the local environment.
+- Secure **AWS integration** using environment-based credentials.
+- Local development support with **LocalStack**.
+- Installable CLI tool (**`s3vault`**) for interacting with encrypted storage.
+- **Integration testing** using *pytest*.
+- **CI pipeline** with GitHub Actions.
 
 
-## Installation & Usage
+## Technical Stack
 
-1. **Clone the repository:**
+- **Language**: Python 3.14+
+- **Cloud Provider**: AWS S3
+- **Infrastructure Emulation**: LocalStack + Docker Compose
+- **Automation**: GitHub Actions (CI)
+- **CLI Framework**: Typer
+- **Testing**: Pytest
+
+
+## Prerequisites
+
+Before using the vault on AWS you must have:
+
+- AWS credentials with S3 permissions
+- An S3 bucket to store encrypted files
+
+You can create one using the CLI:
+```bash
+s3vault create-bucket
+```
+
+Or via AWS CLI:
+```bash
+aws s3 mb s3://your-bucket-name
+```
+
+## Installation
+
+Clone the repository:
+
 ```bash
 git clone https://github.com/michaelgiuliano/s3-crypt-vault.git
 cd s3-crypt-vault
 ```
 
-2. **Install dependencies:**
+Install the tool in editable mode:
+
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
-3. **Local Development (LocalStack):**
+After installation the CLI command becomes available:
+
+```bash
+s3vault
+```
+
+
+## Environment Configuration
+
+Create a `.env` file based on `.env.example`.
+
+Example configuration:
+
+```
+AWS_ACCESS_KEY_ID=your_access_key_here
+AWS_SECRET_ACCESS_KEY=your_secret_key_here
+AWS_REGION=eu-north-1
+
+S3_BUCKET_NAME=your-bucket-name-here
+
+USE_LOCALSTACK=true
+```
+
+When `USE_LOCALSTACK=true`, the tool connects to a local S3 emulator instead of AWS.
+
+
+## Local Development (LocalStack)
+
 Start the local S3 environment:
+
 ```bash
 docker-compose up -d
 ```
 
-4. **Environment Setup:**
-Create a `.env` file based on `.env.example`:
-```text
-AWS_ACCESS_KEY_ID=your_access_key_here
-AWS_SECRET_ACCESS_KEY=your_secret_key_here
-AWS_REGION=eu-north-1
-USE_LOCALSTACK=true
+LocalStack allows the entire workflow to run locally without creating real AWS resources.
+
+
+## CLI Usage
+
+### Setup
+
+```bash
+# Generate a new encryption key:
+s3vault init-key
+
+# Create the configured S3 bucket:
+s3vault create-bucket
+
+# List available buckets:
+s3vault list-buckets
 ```
 
-5. **Run Tests:**
+### Operations
+
 ```bash
-pytest tests/
+# Upload a file (encrypted locally before upload):
+s3vault upload secret.txt
+
+# List encrypted files stored in the configured bucket:
+s3vault list-files
+
+# Download and decrypt a file:
+s3vault download secret.txt.enc decrypted.txt
 ```
 
 
 ## Encryption Architecture
 
-All files are encrypted locally before being uploaded to AWS S3.
+All files are **encrypted locally** before being uploaded to S3.
 
 The project uses **AES-256-GCM**, an authenticated encryption mode that ensures:
 
-- **Confidentiality** – data cannot be read without the key
+- **Confidentiality** – encrypted data cannot be read without the key
 - **Integrity** – tampering with ciphertext is detected
-- **Authenticity** – decryption fails if data is modified
+- **Authenticity** – modified data cannot be successfully decrypted
 
 ### Encryption Flow
 
-1. File is read locally
-2. A random 12-byte nonce is generated
-3. AES-256-GCM encrypts the file
-4. The nonce is prepended to the ciphertext
-5. The encrypted file is uploaded to S3
+```
+File is read locally
+        ↓
+A random 12-byte nonce is generated
+        ↓
+AES-256-GCM encrypts the file
+        ↓
+The nonce is prepended to the ciphertext
+        ↓
+The encrypted object is uploaded to S3
+```
 
 ### Tamper Detection
 
-AES-GCM provides built-in authentication.  
-If even a single bit of ciphertext is modified, decryption will raise an error.
+*AES-GCM* provides **built-in authentication**.
 
-This behavior is verified by `test_tamper_detection()`.
+If even a single bit of ciphertext is modified, decryption will fail with an authentication error.
 
+This behavior is verified by the automated test `test_tamper_detection()`.
 
-## Vault Workflow
+### Vault Workflow
 
 The vault layer combines encryption and cloud storage.
 
@@ -103,3 +183,64 @@ decrypt locally
 ```
 
 This workflow is implemented in `app/vault.py` and verified by the end-to-end integration test `test_vault.py`.
+
+
+## Testing
+
+Run the full test suite:
+
+```bash
+pytest tests/
+```
+
+Tests cover:
+
+- Encryption and decryption correctness
+- Tamper detection
+- S3 integration using LocalStack
+- End-to-end vault workflow
+
+## Continuous Integration
+
+**GitHub Actions** automatically runs:
+
+- Lint checks
+- Integration tests
+- LocalStack environment
+
+On every `push` and `pull` request.
+
+
+## Project Structure
+
+```
+s3-crypt-vault/
+├───.github
+│   └───workflows
+│       └───ci.yml
+├───app
+│   ├───__init__.py
+│   ├───cli.py
+│   ├───config.py
+│   ├───encryptor.py
+│   ├───s3_client.py
+│   └───vault.py
+├───tests
+│   ├───__init__.py
+│   ├───test_encryption.py
+│   ├───test_s3_client.py
+│   ├───test_s3_connection.py
+│   └───test_vault.py
+├───.env.example
+├───.gitignore
+├───docker-compose.yml
+├───pyproject.toml
+├───README.md
+└───requirements.txt
+```
+
+## License
+
+This project is licensed under the MIT License.
+
+You are free to use, modify, and distribute this software with proper attribution. See the LICENSE file for the full license text.
