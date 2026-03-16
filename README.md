@@ -2,9 +2,11 @@
 
 A Python-based CLI tool for client-side encrypted AWS S3 storage.
 
+
 ## Project Overview
 
 This project demonstrates a **Zero-Knowledge architecture**. Files are encrypted locally using **AES-256 GCM** before being transmitted to AWS S3. Even if the S3 bucket is compromised, the data remains unreadable without the local master key. This ensures that the Cloud provider never sees the plaintext data.
+
 
 ## Security Features
 
@@ -13,12 +15,14 @@ This project demonstrates a **Zero-Knowledge architecture**. Files are encrypted
 * **Secure Credential Management:** No hardcoded secrets. It fully supports environment variables and follows AWS security best practices.
 * **Local Emulation:** Integrated with **LocalStack** for secure, cost-free local development and testing.
 
+
 ## Technical Stack & CI/CD
 
 * **Language:** Python 3.14+
 * **Cloud Provider:** AWS (S3)
 * **Infrastructure Emulation:** LocalStack & Docker Compose
 * **Automation:** GitHub Actions (CI) for automated linting and integration testing.
+
 
 ## Installation & Usage
 
@@ -53,6 +57,7 @@ USE_LOCALSTACK=true
 pytest tests/
 ```
 
+
 ## Encryption Architecture
 
 All files are encrypted locally before being uploaded to AWS S3.
@@ -77,3 +82,24 @@ AES-GCM provides built-in authentication.
 If even a single bit of ciphertext is modified, decryption will raise an error.
 
 This behavior is verified by `test_tamper_detection()`.
+
+
+## Vault Workflow
+
+The vault layer combines encryption and cloud storage.
+
+Files follow this lifecycle:
+
+```
+file
+ ↓
+encrypt locally (AES-256-GCM)
+ ↓
+upload encrypted object to S3
+ ↓
+download encrypted object
+ ↓
+decrypt locally
+```
+
+This workflow is implemented in `app/vault.py` and verified by the end-to-end integration test `test_vault.py`.
