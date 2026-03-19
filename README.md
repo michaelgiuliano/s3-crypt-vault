@@ -257,7 +257,9 @@ s3-crypt-vault/
 │   └───test_vault.py
 ├───.env.example
 ├───.gitignore
+├───CHANGELOG.md
 ├───docker-compose.yml
+├───LICENSE
 ├───pyproject.toml
 ├───README.md
 └───requirements.txt
