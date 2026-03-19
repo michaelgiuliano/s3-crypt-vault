@@ -4,6 +4,7 @@ from app.encryptor import FileEncryptor
 from app.vault import CryptVault
 from app.s3_client import S3Client
 
+
 app = typer.Typer(help="S3 Crypt Vault CLI")
 
 

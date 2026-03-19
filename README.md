@@ -1,16 +1,40 @@
 # S3 Crypt Vault
+![Python](https://img.shields.io/badge/python-3.14-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://github.com/michaelgiuliano/s3-crypt-vault/actions/workflows/ci.yml/badge.svg)
 
-A Python CLI tool for **zero-knowledge encrypted storage on AWS S3**.
+>A Python CLI tool for **zero-knowledge encrypted storage on AWS S3**.
 
 
 ## Project Overview
 
-This project demonstrates a Zero-Knowledge architecture for cloud storage.
+This project demonstrates a **Zero-Knowledge architecture for cloud storage**.
 
-Files are encrypted locally using AES-256-GCM before being transmitted to AWS S3. Even if the S3 bucket is compromised, the stored data remains unreadable without the local encryption key.
+Files are encrypted locally using **AES-256-GCM** before being transmitted to AWS S3. Even if the S3 bucket is compromised, the stored data remains unreadable without the local encryption key.
 
 The cloud provider never has access to plaintext data, ensuring that encryption and decryption always occur on the client side.
+
+
+## Security Model
+
+This project follows a zero-knowledge architecture:
+
+### What it protects against
+
+- Compromise of the S3 bucket
+- Unauthorized access to stored objects
+- Data leakage from cloud provider
+
+### What it does NOT protect against
+
+- Loss or theft of the encryption key
+- Compromise of the local machine
+- Weak user key management practices
+
+### Key Responsibility
+
+The user is fully responsible for securely storing the encryption key.
+If the key is lost, the data cannot be recovered.
 
 
 ## Features
