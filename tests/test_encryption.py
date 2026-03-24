@@ -79,7 +79,8 @@ def test_aad_tampering_detected():
 
     encrypted = encrypt(password, data)
 
-    corrupted = encrypted[:4] + b"\x03" + encrypted[5:]
+    corrupted = bytearray(encrypted)
+    corrupted[-1] ^= 0x01
 
     with pytest.raises(InvalidTag):
-        decrypt(password, corrupted)
+        decrypt(password, bytes(corrupted))
