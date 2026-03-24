@@ -1,5 +1,8 @@
 import pytest
+from cryptography.exceptions import InvalidTag
+
 from app.encryptor import FileEncryptor
+from app.crypto.envelope import encrypt, decrypt
 
 
 def test_encryption_decryption_workflow():
@@ -20,7 +23,6 @@ def test_key_persistence(tmp_path):
     original_encryptor = FileEncryptor()
     original_encryptor.save_key(key_file)
 
-    # Load into a new instance
     new_encryptor = FileEncryptor.load_key(key_file)
     assert original_encryptor.key == new_encryptor.key
 
@@ -30,10 +32,18 @@ def test_tamper_detection():
     encryptor = FileEncryptor()
     encrypted = encryptor.encrypt(b"Pure Data")
 
-    # Manually corrupt the last byte of the ciphertext
     corrupted_data = bytearray(encrypted)
     corrupted_data[-1] = (corrupted_data[-1] + 1) % 256
 
-    with pytest.raises(Exception):
-        # AES-GCM will raise an InvalidTag exception here
+    with pytest.raises(InvalidTag):
         encryptor.decrypt(bytes(corrupted_data))
+
+
+def test_envelope_encrypt_decrypt_roundtrip():
+    password = "strong-password"
+    data = b"vault secret data"
+
+    encrypted = encrypt(password, data)
+    decrypted = decrypt(password, encrypted)
+
+    assert decrypted == data
