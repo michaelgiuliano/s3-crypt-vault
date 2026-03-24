@@ -20,10 +20,11 @@ def vault(tmp_path):
     return CryptVault(key_path=key_file)
 
 
-def test_vault_encrypt_upload_download(vault, tmp_path):
+def test_vault_encrypt_upload_download(vault, tmp_path, monkeypatch):
+
+    monkeypatch.setattr(vault, "_get_password", lambda: "test-password")
 
     test_file = tmp_path / "secret.txt"
-
     original_content = b"super secret vault data"
 
     test_file.write_bytes(original_content)

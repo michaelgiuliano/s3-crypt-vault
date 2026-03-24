@@ -2,8 +2,7 @@ from pathlib import Path
 
 from app.encryptor import FileEncryptor
 from app.s3_client import S3Client
-from app.crypto.envelope import decrypt as decrypt_v2
-
+from app.crypto.envelope import encrypt as encrypt_v2, decrypt as decrypt_v2
 
 class CryptVault:
     """
@@ -21,14 +20,15 @@ class CryptVault:
 
     def upload_file(self, file_path: str):
         """
-        Encrypt a file locally and upload it to S3.
+        Encrypt a file locally (v2) and upload it to S3.
         """
 
         path = Path(file_path)
-
         data = path.read_bytes()
 
-        encrypted = self.encryptor.encrypt(data)
+        password = self._get_password()
+
+        encrypted = encrypt_v2(password, data)
 
         object_key = f"{path.name}.enc"
 
