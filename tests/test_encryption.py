@@ -71,3 +71,15 @@ def test_invalid_version():
 
     with pytest.raises(ValueError):
         decrypt(password, corrupted)
+
+
+def test_aad_tampering_detected():
+    password = "test"
+    data = b"hello"
+
+    encrypted = encrypt(password, data)
+
+    corrupted = encrypted[:4] + b"\x03" + encrypted[5:]
+
+    with pytest.raises(Exception):
+        decrypt(password, corrupted)

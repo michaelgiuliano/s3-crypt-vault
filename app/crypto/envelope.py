@@ -12,6 +12,7 @@ MIN_SIZE = 16 + 12 + 12 + ENC_DEK_SIZE
 MAGIC = b"SCV2"
 VERSION = 2
 
+AAD = MAGIC + bytes([VERSION])
 
 def encrypt(password: str, data: bytes) -> bytes:
     """
@@ -35,10 +36,10 @@ def encrypt(password: str, data: bytes) -> bytes:
     dek = AESGCM.generate_key(bit_length=256)
 
     file_nonce = os.urandom(12)
-    ciphertext = AESGCM(dek).encrypt(file_nonce, data, None)
+    ciphertext = AESGCM(dek).encrypt(file_nonce, data, AAD)
 
     dek_nonce = os.urandom(12)
-    enc_dek = AESGCM(master_key).encrypt(dek_nonce, dek, None)
+    enc_dek = AESGCM(master_key).encrypt(dek_nonce, dek, AAD)
 
     enc_dek_len = len(enc_dek).to_bytes(2, "big")
 
@@ -70,6 +71,8 @@ def decrypt(password: str, blob: bytes) -> bytes:
         raise ValueError(f"Unsupported version: {version}")
 
     offset = 5
+
+    aad = magic + bytes([version])
 
     # --- salt ---
     salt = blob[offset:offset + 16]
@@ -106,9 +109,9 @@ def decrypt(password: str, blob: bytes) -> bytes:
     master_key = derive_key(password, salt)
 
     # --- decrypt DEK ---
-    dek = AESGCM(master_key).decrypt(dek_nonce, enc_dek, None)
+    dek = AESGCM(master_key).decrypt(dek_nonce, enc_dek, aad)
 
     # --- decrypt file ---
-    plaintext = AESGCM(dek).decrypt(file_nonce, ciphertext, None)
+    plaintext = AESGCM(dek).decrypt(file_nonce, ciphertext, aad)
 
     return plaintext
