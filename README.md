@@ -10,7 +10,7 @@
 
 This project demonstrates a **Zero-Knowledge architecture for cloud storage**.
 
-Files are encrypted locally using **AES-256-GCM** before being transmitted to AWS S3. Even if the S3 bucket is compromised, the stored data remains unreadable without the local encryption key.
+Files are encrypted locally using **AES-256-GCM** with an envelope encryption model before being transmitted to AWS S3. Even if the S3 bucket is compromised, the stored data remains unreadable without the local encryption key.
 
 The cloud provider never has access to plaintext data, ensuring that encryption and decryption always occur on the client side.
 
@@ -128,6 +128,7 @@ LocalStack allows the entire workflow to run locally without creating real AWS r
 
 
 ## CLI Usage
+> Note: Upload and download operations require a password for encryption/decryption (v2 format).
 
 ### Setup
 
@@ -165,6 +166,21 @@ The project uses **AES-256-GCM**, an authenticated encryption mode that ensures:
 - **Confidentiality** – encrypted data cannot be read without the key
 - **Integrity** – tampering with ciphertext is detected
 - **Authenticity** – modified data cannot be successfully decrypted
+
+### v2 Encryption Model (Envelope Encryption)
+
+Starting from version 0.2.0, the vault uses an envelope encryption scheme:
+
+- A **Data Encryption Key (DEK)** is generated per file
+- A **master key** is derived from a user password using scrypt
+- The file is encrypted with the DEK (AES-256-GCM)
+- The DEK is encrypted with the master key
+
+This improves:
+
+- Key isolation per file
+- Reduced blast radius in case of compromise
+- No persistent master key stored on disk
 
 ### Encryption Flow
 

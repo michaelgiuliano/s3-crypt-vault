@@ -1,5 +1,24 @@
 # Changelog
 
+
+## v0.2.0 - Envelope Encryption & Structured Format
+
+- Introduced envelope encryption model using per-file DEK and password-derived master key (scrypt)
+- Implemented structured binary format (SCV2) with versioned header
+- Added authenticated encryption (AES-256-GCM) with AAD binding (magic + version)
+- Improved parsing robustness with explicit format validation
+- Added backward compatibility for legacy v1 encrypted files
+- Refactored vault to use envelope encryption (v2) as default
+
+
+## v0.1.1 - Repository Improvements
+
+- Improved README with detailed security model explanation
+- Added CHANGELOG for version tracking
+- Enhanced repository metadata (description, topics, badges)
+- General documentation and formatting improvements
+
+
 ## v0.1.0 - Initial Release
 
 - AES-256-GCM client-side encryption

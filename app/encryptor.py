@@ -1,3 +1,12 @@
+"""
+LEGACY MODULE (v1)
+
+Single-key AES-GCM encryption.
+Kept for backward compatibility.
+
+v2 uses envelope encryption (see app.crypto.envelope).
+"""
+
 import os
 from pathlib import Path
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -5,6 +14,11 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 class FileEncryptor:
     """
+    DEPRECATED (v1)
+
+    This class implements single-key encryption.
+    Use envelope encryption for new data.
+    
     Handles AES-256 GCM encryption and decryption.
     Ensures both data confidentiality and integrity (AEAD).
     """
@@ -54,3 +68,10 @@ class FileEncryptor:
             raise FileNotFoundError(f"Key file not found at: {path}")
         
         return cls(key=key_path.read_bytes())
+    
+    @staticmethod
+    def is_legacy_format(data: bytes) -> bool:
+        """
+        Heuristic: v1 has no header, raw nonce + ciphertext.
+        """
+        return not data.startswith(b"SCV2")
