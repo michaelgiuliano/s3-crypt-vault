@@ -74,4 +74,4 @@ class FileEncryptor:
         """
         Heuristic: v1 has no header, raw nonce + ciphertext.
         """
-        return True  # placeholder
+        return not data.startswith(b"SCV2")
