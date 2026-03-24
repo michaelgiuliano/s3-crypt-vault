@@ -2,6 +2,7 @@ from pathlib import Path
 
 from app.encryptor import FileEncryptor
 from app.s3_client import S3Client
+from app.crypto.envelope import decrypt as decrypt_v2
 
 
 class CryptVault:
@@ -14,6 +15,9 @@ class CryptVault:
 
         self.encryptor = FileEncryptor.load_key(key_path)
         self.s3 = S3Client()
+
+    def _get_password(self) -> str:
+        return input("Enter password: ")
 
     def upload_file(self, file_path: str):
         """
@@ -39,7 +43,13 @@ class CryptVault:
 
         encrypted = self.s3.download_bytes(object_key)
 
-        decrypted = self.encryptor.decrypt(encrypted)
+        if encrypted.startswith(b"SCV2"):
+            # v2
+            password = self._get_password()
+            decrypted = decrypt_v2(password, encrypted)
+        else:
+            # v1 (legacy)
+            decrypted = self.encryptor.decrypt(encrypted)
 
         Path(output_path).write_bytes(decrypted)
 

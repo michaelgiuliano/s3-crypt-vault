@@ -81,5 +81,5 @@ def test_aad_tampering_detected():
 
     corrupted = encrypted[:4] + b"\x03" + encrypted[5:]
 
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidTag):
         decrypt(password, corrupted)
