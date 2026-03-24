@@ -47,3 +47,27 @@ def test_envelope_encrypt_decrypt_roundtrip():
     decrypted = decrypt(password, encrypted)
 
     assert decrypted == data
+
+
+def test_invalid_magic_header():
+    password = "test"
+    data = b"hello"
+
+    encrypted = encrypt(password, data)
+
+    corrupted = b"XXXX" + encrypted[4:]
+
+    with pytest.raises(ValueError):
+        decrypt(password, corrupted)
+
+
+def test_invalid_version():
+    password = "test"
+    data = b"hello"
+
+    encrypted = encrypt(password, data)
+
+    corrupted = encrypted[:4] + b"\x03" + encrypted[5:]
+
+    with pytest.raises(ValueError):
+        decrypt(password, corrupted)

@@ -9,19 +9,25 @@ GCM_TAG_SIZE = 16
 ENC_DEK_SIZE = DEK_SIZE + GCM_TAG_SIZE
 MIN_SIZE = 16 + 12 + 12 + ENC_DEK_SIZE
 
+MAGIC = b"SCV2"
+VERSION = 2
+
 
 def encrypt(password: str, data: bytes) -> bytes:
     """
     Encrypt data using envelope encryption.
-    Returns a raw blob (temporary format for v0.2.0 commit 1).
+    Returns SCV2 structured binary format.
     """
 
     # Layout (temporary v0.2.0):
-    # [0:16]   salt
-    # [16:28]  dek_nonce
-    # [28:40]  file_nonce
-    # [40:?]   enc_dek (48 bytes)
-    # [?]      ciphertext
+    # magic (4)        → b"SCV2"
+    # version (1)      → 0x02
+    # salt (16)
+    # dek_nonce (12)
+    # enc_dek_len (2)  → big endian
+    # enc_dek (n)
+    # file_nonce (12)
+    # ciphertext (+ tag)
 
     salt = os.urandom(16)
     master_key = derive_key(password, salt)
@@ -29,39 +35,80 @@ def encrypt(password: str, data: bytes) -> bytes:
     dek = AESGCM.generate_key(bit_length=256)
 
     file_nonce = os.urandom(12)
-    file_cipher = AESGCM(dek)
-    ciphertext = file_cipher.encrypt(file_nonce, data, None)
+    ciphertext = AESGCM(dek).encrypt(file_nonce, data, None)
 
     dek_nonce = os.urandom(12)
-    dek_cipher = AESGCM(master_key)
-    enc_dek = dek_cipher.encrypt(dek_nonce, dek, None)
+    enc_dek = AESGCM(master_key).encrypt(dek_nonce, dek, None)
 
-    # --- TEMP FORMAT (commit 1) ---
-    # salt | dek_nonce | file_nonce | enc_dek | ciphertext
-    return salt + dek_nonce + file_nonce + enc_dek + ciphertext
+    enc_dek_len = len(enc_dek).to_bytes(2, "big")
 
+    return (
+        MAGIC +
+        bytes([VERSION]) +
+        salt +
+        dek_nonce +
+        enc_dek_len +
+        enc_dek +
+        file_nonce +
+        ciphertext
+    )
 
 def decrypt(password: str, blob: bytes) -> bytes:
     """
     Decrypt data using envelope encryption.
     """
 
-    if len(blob) < MIN_SIZE:
-        raise ValueError("Invalid encrypted data (too short)")
+    if len(blob) < 4 + 1:
+        raise ValueError("Invalid data")
 
-    salt = blob[:16]
-    dek_nonce = blob[16:28]
-    file_nonce = blob[28:40]
+    magic = blob[:4]
+    if magic != MAGIC:
+        raise ValueError("Invalid magic header")
 
-    enc_dek = blob[40:40 + ENC_DEK_SIZE]
-    ciphertext = blob[40 + ENC_DEK_SIZE:]
+    version = blob[4]
+    if version != VERSION:
+        raise ValueError(f"Unsupported version: {version}")
 
+    offset = 5
+
+    # --- salt ---
+    salt = blob[offset:offset + 16]
+    offset += 16
+
+    # --- dek nonce ---
+    dek_nonce = blob[offset:offset + 12]
+    offset += 12
+
+    # --- enc_dek length ---
+    enc_dek_len = int.from_bytes(blob[offset:offset + 2], "big")
+    offset += 2
+
+    if len(blob) < offset + enc_dek_len + 12:
+        raise ValueError("Invalid encrypted data (truncated enc_dek)")
+    
+    if enc_dek_len < ENC_DEK_SIZE:
+        raise ValueError("Invalid enc_dek length")
+
+    # --- enc_dek ---
+    enc_dek = blob[offset:offset + enc_dek_len]
+    offset += enc_dek_len
+
+    # --- file nonce ---
+    file_nonce = blob[offset:offset + 12]
+    offset += 12
+
+    ciphertext = blob[offset:]
+
+    if len(ciphertext) == 0:
+        raise ValueError("Invalid encrypted data (empty ciphertext)")
+
+    # --- derive master key ---
     master_key = derive_key(password, salt)
 
-    dek_cipher = AESGCM(master_key)
-    dek = dek_cipher.decrypt(dek_nonce, enc_dek, None)
+    # --- decrypt DEK ---
+    dek = AESGCM(master_key).decrypt(dek_nonce, enc_dek, None)
 
-    file_cipher = AESGCM(dek)
-    plaintext = file_cipher.decrypt(file_nonce, ciphertext, None)
+    # --- decrypt file ---
+    plaintext = AESGCM(dek).decrypt(file_nonce, ciphertext, None)
 
     return plaintext
