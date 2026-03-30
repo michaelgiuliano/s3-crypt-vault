@@ -1,4 +1,5 @@
 from pathlib import Path
+from getpass import getpass
 
 from app.encryptor import FileEncryptor
 from app.s3_client import S3Client
@@ -16,7 +17,7 @@ class CryptVault:
         self.s3 = S3Client()
 
     def _get_password(self) -> str:
-        return input("Enter password: ")
+        return getpass("Enter password: ")
 
     def upload_file(self, file_path: str):
         """
