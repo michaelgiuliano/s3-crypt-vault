@@ -1,18 +1,53 @@
 # S3 Crypt Vault
-![Python](https://img.shields.io/badge/python-3.14-blue)
+![Python](https://img.shields.io/badge/python-3.12-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://github.com/michaelgiuliano/s3-crypt-vault/actions/workflows/ci.yml/badge.svg)
 
->A Python CLI tool for **zero-knowledge encrypted storage on AWS S3**.
+>A secure client-side encrypted storage system for AWS S3.
 
 
 ## Project Overview
 
-This project demonstrates a **Zero-Knowledge architecture for cloud storage**.
+This project implements a **secure storage system** based on client-side encryption and zero-knowledge principles.
 
 Files are encrypted locally using **AES-256-GCM** with an envelope encryption model before being transmitted to AWS S3. Even if the S3 bucket is compromised, the stored data remains unreadable without the local encryption key.
 
 The cloud provider never has access to plaintext data, ensuring that encryption and decryption always occur on the client side.
+
+
+## Architecture
+
+The system is composed of multiple layers, each with a clear responsibility:
+
+- **CLI Layer (Typer)**  
+  Handles user interaction and command execution.
+
+- **Vault Layer (`CryptVault`)**  
+  Orchestrates encryption and storage operations.
+
+- **Encryption Layer**  
+  Implements client-side encryption using AES-256-GCM and envelope encryption.
+
+- **Storage Layer (`S3Client`)**  
+  Handles communication with AWS S3 (or LocalStack in development).
+
+### Data Flow
+
+```
+User Input
+ ↓
+CLI (commands)
+ ↓
+Vault (orchestration)
+ ↓
+Encryption (client-side)
+ ↓
+S3 Client
+ ↓
+AWS S3
+```
+
+This separation ensures that encryption always happens locally before any data is transmitted to the cloud.
 
 
 ## Security Model
@@ -39,7 +74,7 @@ If the key is lost, the data cannot be recovered.
 
 ## Features
 
-- **Client-side encryption** using *AES-256-GCM*.
+- **Client-side encryption** using *AES-256-GCM* with envelope encryption and password-based key derivation (`scrypt`).
 - **Zero-knowledge design** – the encryption key never leaves the local environment.
 - Secure **AWS integration** using environment-based credentials.
 - Local development support with **LocalStack**.
@@ -50,7 +85,7 @@ If the key is lost, the data cannot be recovered.
 
 ## Technical Stack
 
-- **Language**: Python 3.14+
+- **Language**: Python 3.12+
 - **Cloud Provider**: AWS S3
 - **Infrastructure Emulation**: LocalStack + Docker Compose
 - **Automation**: GitHub Actions (CI)
@@ -75,6 +110,7 @@ Or via AWS CLI:
 aws s3 mb s3://your-bucket-name
 ```
 
+
 ## Installation
 
 Clone the repository:
@@ -94,6 +130,17 @@ After installation the CLI command becomes available:
 
 ```bash
 s3vault
+```
+
+### Dependency Management
+
+This project uses `pip-tools` for reproducible dependency management.
+
+To update dependencies:
+
+```bash
+pip-compile requirements.in
+pip-compile dev-requirements.in
 ```
 
 
@@ -191,7 +238,7 @@ A random 12-byte nonce is generated
         ↓
 AES-256-GCM encrypts the file
         ↓
-The nonce is prepended to the ciphertext
+Encryption metadata is structured and stored alongside the ciphertext.
         ↓
 The encrypted object is uploaded to S3
 ```
@@ -240,6 +287,7 @@ Tests cover:
 - S3 integration using LocalStack
 - End-to-end vault workflow
 
+
 ## Continuous Integration
 
 **GitHub Actions** automatically runs:
@@ -255,17 +303,21 @@ On every `push` and `pull` request.
 
 ```
 s3-crypt-vault/
-├───.github
-│   └───workflows
+├───.github/
+│   └───workflows/
 │       └───ci.yml
-├───app
+├───app/
+│   ├───crypto/
+│   │   ├───__init__.py
+│   │   ├───envelope.py
+│   │   └───kdf.py
 │   ├───__init__.py
 │   ├───cli.py
 │   ├───config.py
 │   ├───encryptor.py
 │   ├───s3_client.py
 │   └───vault.py
-├───tests
+├───tests/
 │   ├───__init__.py
 │   ├───test_encryption.py
 │   ├───test_s3_client.py
@@ -274,10 +326,13 @@ s3-crypt-vault/
 ├───.env.example
 ├───.gitignore
 ├───CHANGELOG.md
+├───dev-requirements.in
+├───dev-requirements.txt
 ├───docker-compose.yml
 ├───LICENSE
 ├───pyproject.toml
 ├───README.md
+├───requirements.in
 └───requirements.txt
 ```
 

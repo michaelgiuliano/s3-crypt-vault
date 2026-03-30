@@ -1,7 +1,7 @@
 [project]
 name = "s3-crypt-vault"
 version = "0.2.1"
-description = "CLI tool for client-side encrypted AWS S3 storage."
+description = "Secure client-side encrypted storage system for AWS S3."
 authors = [{name = "Michael Giuliano"}]
 readme = "README.md"
 requires-python = ">=3.12"

@@ -1,6 +1,16 @@
 # Changelog
 
 
+## v0.2.1 - Hardening & Production Readiness
+
+- Added fail-fast environment configuration validation
+- Improved S3 client with explicit error handling
+- Secured password input (no terminal echo)
+- Introduced reproducible dependency management (pip-tools)
+- Updated documentation (architecture + positioning)
+- Aligned Python version (`>=3.12`) and CI environment
+
+
 ## v0.2.0 - Envelope Encryption & Structured Format
 
 - Introduced envelope encryption model using per-file DEK and password-derived master key (scrypt)
