@@ -19,39 +19,38 @@ class CryptVault:
         self.s3 = S3Client(self.settings)
 
 
-    def upload_file(self, file_path: str, password: str):
-        """
-        Encrypt a file locally (v2) and upload it to S3.
-        """
+    def encrypt_bytes(self, data: bytes, password: str) -> bytes:
+        return encrypt_v2(password, data)
 
-        path = Path(file_path)
-        data = path.read_bytes()
-
-        encrypted = encrypt_v2(password, data)
-
-        object_key = f"{path.name}.enc"
+    def decrypt_bytes(self, encrypted: bytes, password: str | None = None) -> bytes:
+        if encrypted.startswith(b"SCV2"):
+            if not password:
+                raise ValueError("Password required for v2 encrypted file")
+            return decrypt_v2(password, encrypted)
+        else:
+            return self.encryptor.decrypt(encrypted)
+    
+    def upload_bytes(self, filename: str, data: bytes, password: str) -> str:
+        encrypted = self.encrypt_bytes(data, password)
+        object_key = f"{filename}.enc"
 
         self.s3.upload_bytes(object_key, encrypted)
 
         return object_key
 
-    def download_file(self, object_key: str, output_path: str, password: str | None = None):
-        """
-        Download encrypted object from S3 and decrypt locally.
-        """
-
+    def download_bytes(self, object_key: str, password: str | None = None) -> bytes:
         encrypted = self.s3.download_bytes(object_key)
+        return self.decrypt_bytes(encrypted, password)
 
-        if encrypted.startswith(b"SCV2"):
-            # v2
-            if not password:
-                raise ValueError("Password required for v2 encrypted file")
-            
-            decrypted = decrypt_v2(password, encrypted)
-        else:
-            # v1 (legacy)
-            decrypted = self.encryptor.decrypt(encrypted)
+    def upload_file(self, file_path: str, password: str):
+        path = Path(file_path)
+        data = path.read_bytes()
 
-        Path(output_path).write_bytes(decrypted)
+        return self.upload_bytes(path.name, data, password)
+
+    def download_file(self, object_key: str, output_path: str, password: str | None = None):
+        data = self.download_bytes(object_key, password)
+
+        Path(output_path).write_bytes(data)
 
         return output_path
