@@ -1,4 +1,5 @@
 import typer
+from getpass import getpass
 
 from app.encryptor import FileEncryptor
 from app.vault import CryptVault
@@ -84,7 +85,8 @@ def upload(file: str, key_path: str = "master.key"):
         )
         raise typer.Exit(code=1)
 
-    object_key = vault.upload_file(file)
+    password = getpass("Enter password: ")
+    object_key = vault.upload_file(file, password)
 
     typer.echo(f"Encrypted file uploaded as: {object_key}")
 
@@ -97,7 +99,16 @@ def download(object_key: str, output: str, key_path: str = "master.key"):
 
     vault = CryptVault(key_path=key_path)
 
-    vault.download_file(object_key, output)
+    try:
+        vault.download_file(object_key, output)
+    except ValueError as e:
+        if "Password required" in str(e):
+            typer.echo("Password required for encrypted file.")
+            
+            password = getpass("Enter password: ")
+            vault.download_file(object_key, output, password)
+        else:
+            raise
 
     typer.echo(f"File downloaded and decrypted to: {output}")
 

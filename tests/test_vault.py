@@ -20,20 +20,18 @@ def vault(tmp_path):
     return CryptVault(key_path=key_file)
 
 
-def test_vault_encrypt_upload_download(vault, tmp_path, monkeypatch):
-
-    monkeypatch.setattr(vault, "_get_password", lambda: "test-password")
+def test_vault_encrypt_upload_download(vault, tmp_path):
 
     test_file = tmp_path / "secret.txt"
     original_content = b"super secret vault data"
 
     test_file.write_bytes(original_content)
 
-    object_key = vault.upload_file(str(test_file))
+    object_key = vault.upload_file(str(test_file), "test-password")
 
     output_file = tmp_path / "downloaded.txt"
 
-    vault.download_file(object_key, str(output_file))
+    vault.download_file(object_key, str(output_file), "test-password")
 
     downloaded_content = output_file.read_bytes()
 
@@ -57,8 +55,7 @@ def test_backward_compatibility(vault, tmp_path):
     assert output.read_bytes() == content
 
 
-def test_v2_flow(vault, tmp_path, monkeypatch):
-    monkeypatch.setattr(vault, "_get_password", lambda: "test-password")
+def test_v2_flow(vault, tmp_path):
 
     data = b"hello"
     encrypted = encrypt_v2("test-password", data)
@@ -67,6 +64,6 @@ def test_v2_flow(vault, tmp_path, monkeypatch):
     vault.s3.upload_bytes(key, encrypted)
 
     output = tmp_path / "out.txt"
-    vault.download_file(key, str(output))
+    vault.download_file(key, str(output), "test-password")
 
     assert output.read_bytes() == data

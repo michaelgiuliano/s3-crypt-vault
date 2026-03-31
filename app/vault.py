@@ -16,21 +16,16 @@ class CryptVault:
         self.settings = Settings()
         self.encryptor = FileEncryptor.load_key(key_path)
 
-        settings = Settings()
-        self.s3 = S3Client(settings)
+        self.s3 = S3Client(self.settings)
 
-    def _get_password(self) -> str:
-        return getpass("Enter password: ")
 
-    def upload_file(self, file_path: str):
+    def upload_file(self, file_path: str, password: str):
         """
         Encrypt a file locally (v2) and upload it to S3.
         """
 
         path = Path(file_path)
         data = path.read_bytes()
-
-        password = self._get_password()
 
         encrypted = encrypt_v2(password, data)
 
@@ -40,7 +35,7 @@ class CryptVault:
 
         return object_key
 
-    def download_file(self, object_key: str, output_path: str):
+    def download_file(self, object_key: str, output_path: str, password: str | None = None):
         """
         Download encrypted object from S3 and decrypt locally.
         """
@@ -49,7 +44,9 @@ class CryptVault:
 
         if encrypted.startswith(b"SCV2"):
             # v2
-            password = self._get_password()
+            if not password:
+                raise ValueError("Password required for v2 encrypted file")
+            
             decrypted = decrypt_v2(password, encrypted)
         else:
             # v1 (legacy)
