@@ -1,6 +1,15 @@
 # Changelog
 
 
+## v0.2.2 - Core Refactor & API Readiness
+
+- Decoupled configuration from global state
+- Separated core logic from I/O concerns
+- Removed interactive input from core logic
+- Introduced domain-specific exceptions
+- Improved test coverage
+
+
 ## v0.2.1 - Hardening & Production Readiness
 
 - Added fail-fast environment configuration validation

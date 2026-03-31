@@ -3,7 +3,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://github.com/michaelgiuliano/s3-crypt-vault/actions/workflows/ci.yml/badge.svg)
 
->A secure client-side encrypted storage system for AWS S3.
+>**A secure client-side encrypted storage system for AWS S3.**
 
 
 ## Project Overview
