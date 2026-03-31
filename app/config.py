@@ -2,9 +2,6 @@ import os
 from dotenv import load_dotenv
 
 
-load_dotenv()
-
-
 class Settings:
     """
     Application configuration with fail-fast validation.
@@ -12,6 +9,7 @@ class Settings:
     """
 
     def __init__(self):
+        load_dotenv()
         self._validate()
 
     def _get_required(self, key: str) -> str:

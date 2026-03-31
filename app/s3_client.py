@@ -4,9 +4,6 @@ from botocore.exceptions import BotoCoreError, ClientError
 from app.config import Settings
 
 
-settings = Settings()
-
-
 class S3Client:
     """
     Wrapper around boto3 S3 client.
@@ -14,15 +11,17 @@ class S3Client:
     Adds basic error handling for clearer failure modes.
     """
 
-    def __init__(self):
+    def __init__(self, settings: Settings):
+        self.settings = settings
         self.bucket = settings.S3_BUCKET_NAME
-        region = settings.AWS_REGION
 
-        endpoint_url = settings.LOCALSTACK_ENDPOINT if settings.USE_LOCALSTACK else None
+        endpoint_url = (
+            settings.LOCALSTACK_ENDPOINT if settings.USE_LOCALSTACK else None
+        )
 
         self.client = boto3.client(
             "s3",
-            region_name=region,
+            region_name=settings.AWS_REGION,
             endpoint_url=endpoint_url,
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
@@ -64,11 +63,11 @@ class S3Client:
     def create_bucket(self):
         try:
             if not self.bucket_exists():
-                region = settings.AWS_REGION
-
                 self.client.create_bucket(
                     Bucket=self.bucket,
-                    CreateBucketConfiguration={"LocationConstraint": region},
+                    CreateBucketConfiguration={
+                        "LocationConstraint": self.settings.AWS_REGION
+                    },
                 )
         except (ClientError, BotoCoreError) as e:
             raise RuntimeError(f"Failed to create bucket '{self.bucket}': {e}") from e

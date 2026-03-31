@@ -3,6 +3,7 @@ import typer
 from app.encryptor import FileEncryptor
 from app.vault import CryptVault
 from app.s3_client import S3Client
+from app.config import Settings
 
 
 app = typer.Typer(help="S3 Crypt Vault CLI")
@@ -26,7 +27,8 @@ def create_bucket():
     Create the configured S3 bucket.
     """
 
-    s3 = S3Client()
+    settings = Settings()
+    s3 = S3Client(settings)
 
     if s3.bucket_exists():
         typer.echo(f"Bucket '{s3.bucket}' already exists.")
@@ -41,7 +43,8 @@ def create_bucket():
 def list_buckets():
     """List available S3 buckets."""
 
-    s3 = S3Client()
+    settings = Settings()
+    s3 = S3Client(settings)
 
     buckets = s3.list_buckets()
 
@@ -53,7 +56,8 @@ def list_buckets():
 def list_files():
     """List encrypted files in the configured bucket."""
 
-    s3 = S3Client()
+    settings = Settings()
+    s3 = S3Client(settings)
 
     if not s3.bucket_exists():
         typer.echo(f"Bucket '{s3.bucket}' does not exist.")

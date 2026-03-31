@@ -3,6 +3,7 @@ from getpass import getpass
 
 from app.encryptor import FileEncryptor
 from app.s3_client import S3Client
+from app.config import Settings
 from app.crypto.envelope import encrypt as encrypt_v2, decrypt as decrypt_v2
 
 class CryptVault:
@@ -12,9 +13,11 @@ class CryptVault:
     """
 
     def __init__(self, key_path: str = "master.key"):
-
+        self.settings = Settings()
         self.encryptor = FileEncryptor.load_key(key_path)
-        self.s3 = S3Client()
+
+        settings = Settings()
+        self.s3 = S3Client(settings)
 
     def _get_password(self) -> str:
         return getpass("Enter password: ")
