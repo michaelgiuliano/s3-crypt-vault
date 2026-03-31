@@ -31,6 +31,9 @@ The system is composed of multiple layers, each with a clear responsibility:
 - **Storage Layer (`S3Client`)**  
   Handles communication with AWS S3 (or LocalStack in development).
 
+- **Error Handling Layer**  
+  Provides domain-specific exceptions to ensure consistent error propagation across components.
+
 ### Data Flow
 
 ```
@@ -315,6 +318,7 @@ s3-crypt-vault/
 │   ├───cli.py
 │   ├───config.py
 │   ├───encryptor.py
+│   ├───exceptions.py
 │   ├───s3_client.py
 │   └───vault.py
 ├───tests/
