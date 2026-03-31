@@ -7,6 +7,7 @@ from app.config import Settings
 from app.crypto.envelope import encrypt as encrypt_v2, decrypt as decrypt_v2
 from app.exceptions import PasswordRequiredError, DecryptionError
 
+
 class CryptVault:
     """
     Core vault logic.
@@ -18,7 +19,6 @@ class CryptVault:
         self.encryptor = FileEncryptor.load_key(key_path)
 
         self.s3 = S3Client(self.settings)
-
 
     def encrypt_bytes(self, data: bytes, password: str) -> bytes:
         return encrypt_v2(password, data)
@@ -36,7 +36,7 @@ class CryptVault:
                 return self.encryptor.decrypt(encrypted)
             except InvalidTag:
                 raise DecryptionError("Invalid key or corrupted data")
-    
+
     def upload_bytes(self, filename: str, data: bytes, password: str) -> str:
         encrypted = self.encrypt_bytes(data, password)
         object_key = f"{filename}.enc"

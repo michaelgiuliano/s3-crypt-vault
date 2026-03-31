@@ -104,7 +104,7 @@ def download(object_key: str, output: str, key_path: str = "master.key"):
         vault.download_file(object_key, output)
     except PasswordRequiredError:
         typer.echo("Password required for encrypted file.")
-        
+
         password = getpass("Enter password: ")
         vault.download_file(object_key, output, password)
 

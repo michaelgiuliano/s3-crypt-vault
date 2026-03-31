@@ -1,6 +1,6 @@
 [project]
 name = "s3-crypt-vault"
-version = "0.2.1"
+version = "0.2.2"
 description = "Secure client-side encrypted storage system for AWS S3."
 authors = [{name = "Michael Giuliano"}]
 readme = "README.md"
@@ -19,12 +19,3 @@ s3vault = "app.cli:app"
 [tool.setuptools.packages.find]
 include = ["app*"]
 exclude = ["volume*", "tests*"]
-
-[tool.flake8]
-max-line-length = 100
-exclude = [
-    ".venv",
-    "venv",
-    "__pycache__",
-    "volume"
-]

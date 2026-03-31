@@ -14,6 +14,7 @@ VERSION = 2
 
 AAD = MAGIC + bytes([VERSION])
 
+
 def encrypt(password: str, data: bytes) -> bytes:
     """
     Encrypt data using envelope encryption.
@@ -54,6 +55,7 @@ def encrypt(password: str, data: bytes) -> bytes:
         ciphertext
     )
 
+
 def decrypt(password: str, blob: bytes) -> bytes:
     """
     Decrypt data using envelope encryption.
@@ -88,7 +90,7 @@ def decrypt(password: str, blob: bytes) -> bytes:
 
     if len(blob) < offset + enc_dek_len + 12:
         raise ValueError("Invalid encrypted data (truncated enc_dek)")
-    
+
     if enc_dek_len < ENC_DEK_SIZE:
         raise ValueError("Invalid enc_dek length")
 

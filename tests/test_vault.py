@@ -4,7 +4,6 @@ import pytest
 from app.encryptor import FileEncryptor
 from app.exceptions import DecryptionError, PasswordRequiredError
 from app.vault import CryptVault
-from app.crypto.envelope import encrypt as encrypt_v2
 
 
 @pytest.fixture
@@ -40,7 +39,7 @@ def test_vault_encrypt_upload_download(vault, tmp_path):
 
 
 def test_backward_compatibility(vault, tmp_path):
-    
+
     test_file = tmp_path / "legacy.txt"
     content = b"legacy data"
     test_file.write_bytes(content)
