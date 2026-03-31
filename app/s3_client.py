@@ -2,6 +2,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 from app.config import Settings
+from app.exceptions import StorageError
 
 
 class S3Client:
@@ -38,7 +39,7 @@ class S3Client:
                 Body=data,
             )
         except (ClientError, BotoCoreError) as e:
-            raise RuntimeError(f"Failed to upload object '{key}' to S3: {e}") from e
+            raise StorageError(f"Failed to upload object '{key}' to S3: {e}") from e
 
     def download_bytes(self, key: str) -> bytes:
         """
@@ -51,14 +52,14 @@ class S3Client:
             )
             return response["Body"].read()
         except (ClientError, BotoCoreError) as e:
-            raise RuntimeError(f"Failed to download object '{key}' from S3: {e}") from e
+            raise StorageError(f"Failed to download object '{key}' from S3: {e}") from e
 
     def bucket_exists(self) -> bool:
         try:
             buckets = self.client.list_buckets().get("Buckets", [])
             return any(b["Name"] == self.bucket for b in buckets)
         except (ClientError, BotoCoreError) as e:
-            raise RuntimeError(f"Failed to check if bucket exists: {e}") from e
+            raise StorageError(f"Failed to check if bucket exists: {e}") from e
 
     def create_bucket(self):
         try:
@@ -70,18 +71,18 @@ class S3Client:
                     },
                 )
         except (ClientError, BotoCoreError) as e:
-            raise RuntimeError(f"Failed to create bucket '{self.bucket}': {e}") from e
+            raise StorageError(f"Failed to create bucket '{self.bucket}': {e}") from e
 
     def list_buckets(self):
         try:
             response = self.client.list_buckets()
             return [b["Name"] for b in response.get("Buckets", [])]
         except (ClientError, BotoCoreError) as e:
-            raise RuntimeError(f"Failed to list S3 buckets: {e}") from e
+            raise StorageError(f"Failed to list S3 buckets: {e}") from e
 
     def list_objects(self):
         try:
             response = self.client.list_objects_v2(Bucket=self.bucket)
             return [o["Key"] for o in response.get("Contents", [])]
         except (ClientError, BotoCoreError) as e:
-            raise RuntimeError(f"Failed to list objects in bucket '{self.bucket}': {e}") from e
+            raise StorageError(f"Failed to list objects in bucket '{self.bucket}': {e}") from e

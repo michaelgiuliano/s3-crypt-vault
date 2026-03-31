@@ -1,10 +1,11 @@
 from pathlib import Path
-from getpass import getpass
+from cryptography.exceptions import InvalidTag
 
 from app.encryptor import FileEncryptor
 from app.s3_client import S3Client
 from app.config import Settings
 from app.crypto.envelope import encrypt as encrypt_v2, decrypt as decrypt_v2
+from app.exceptions import PasswordRequiredError, DecryptionError
 
 class CryptVault:
     """
@@ -25,10 +26,16 @@ class CryptVault:
     def decrypt_bytes(self, encrypted: bytes, password: str | None = None) -> bytes:
         if encrypted.startswith(b"SCV2"):
             if not password:
-                raise ValueError("Password required for v2 encrypted file")
-            return decrypt_v2(password, encrypted)
+                raise PasswordRequiredError("Password required for v2 encrypted file")
+            try:
+                return decrypt_v2(password, encrypted)
+            except InvalidTag:
+                raise DecryptionError("Invalid password or corrupted data")
         else:
-            return self.encryptor.decrypt(encrypted)
+            try:
+                return self.encryptor.decrypt(encrypted)
+            except InvalidTag:
+                raise DecryptionError("Invalid key or corrupted data")
     
     def upload_bytes(self, filename: str, data: bytes, password: str) -> str:
         encrypted = self.encrypt_bytes(data, password)
