@@ -2,6 +2,7 @@ import os
 import pytest
 
 from app.encryptor import FileEncryptor
+from app.exceptions import DecryptionError, PasswordRequiredError
 from app.vault import CryptVault
 from app.crypto.envelope import encrypt as encrypt_v2
 
@@ -56,14 +57,32 @@ def test_backward_compatibility(vault, tmp_path):
 
 
 def test_v2_flow(vault, tmp_path):
-
     data = b"hello"
-    encrypted = encrypt_v2("test-password", data)
 
-    key = "v2.enc"
-    vault.s3.upload_bytes(key, encrypted)
-
+    object_key = vault.upload_bytes("file.txt", data, "test-password")
     output = tmp_path / "out.txt"
-    vault.download_file(key, str(output), "test-password")
+
+    vault.download_file(object_key, str(output), "test-password")
 
     assert output.read_bytes() == data
+
+
+def test_v2_requires_password(vault):
+    data = b"secret"
+    encrypted = vault.encrypt_bytes(data, "test-password")
+
+    with pytest.raises(PasswordRequiredError):
+        vault.decrypt_bytes(encrypted)
+
+
+def test_v2_wrong_password(vault):
+    data = b"secret"
+    encrypted = vault.encrypt_bytes(data, "correct-password")
+
+    with pytest.raises(DecryptionError):
+        vault.decrypt_bytes(encrypted, "wrong-password")
+
+
+def test_upload_file_not_found(vault):
+    with pytest.raises(FileNotFoundError):
+        vault.upload_file("nonexistent.txt", "password")
