@@ -17,7 +17,7 @@ def s3_client():
         aws_secret_access_key="test"
     )
     yield client
-    
+
     # Teardown: Remove the bucket after the test to keep LocalStack clean
     try:
         client.delete_bucket(Bucket="test-vault")
@@ -32,13 +32,13 @@ def test_s3_connection_localstack(s3_client):
     # Check if bucket exists before creating
     # This prevents 'BucketAlreadyOwnedByYou' errors
     existing_buckets = [b['Name'] for b in s3_client.list_buckets().get('Buckets', [])]
-    
+
     if bucket_name not in existing_buckets:
         s3_client.create_bucket(
             Bucket=bucket_name,
             CreateBucketConfiguration={'LocationConstraint': region}
         )
-    
+
     # Final check to verify it actually exists now
     response = s3_client.list_buckets()
     buckets = [b['Name'] for b in response.get('Buckets', [])]

@@ -1,6 +1,8 @@
 import os
 import pytest
+
 from app.s3_client import S3Client
+from app.config import Settings
 
 
 @pytest.fixture
@@ -8,7 +10,8 @@ def s3_client():
     os.environ["USE_LOCALSTACK"] = "true"
     os.environ["S3_BUCKET_NAME"] = "test-vault"
 
-    client = S3Client()
+    settings = Settings()
+    client = S3Client(settings)
     client.create_bucket()
 
     return client

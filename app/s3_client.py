@@ -2,9 +2,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 from app.config import Settings
-
-
-settings = Settings()
+from app.exceptions import StorageError
 
 
 class S3Client:
@@ -14,15 +12,17 @@ class S3Client:
     Adds basic error handling for clearer failure modes.
     """
 
-    def __init__(self):
+    def __init__(self, settings: Settings):
+        self.settings = settings
         self.bucket = settings.S3_BUCKET_NAME
-        region = settings.AWS_REGION
 
-        endpoint_url = settings.LOCALSTACK_ENDPOINT if settings.USE_LOCALSTACK else None
+        endpoint_url = (
+            settings.LOCALSTACK_ENDPOINT if settings.USE_LOCALSTACK else None
+        )
 
         self.client = boto3.client(
             "s3",
-            region_name=region,
+            region_name=settings.AWS_REGION,
             endpoint_url=endpoint_url,
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
@@ -39,7 +39,7 @@ class S3Client:
                 Body=data,
             )
         except (ClientError, BotoCoreError) as e:
-            raise RuntimeError(f"Failed to upload object '{key}' to S3: {e}") from e
+            raise StorageError(f"Failed to upload object '{key}' to S3: {e}") from e
 
     def download_bytes(self, key: str) -> bytes:
         """
@@ -52,37 +52,37 @@ class S3Client:
             )
             return response["Body"].read()
         except (ClientError, BotoCoreError) as e:
-            raise RuntimeError(f"Failed to download object '{key}' from S3: {e}") from e
+            raise StorageError(f"Failed to download object '{key}' from S3: {e}") from e
 
     def bucket_exists(self) -> bool:
         try:
             buckets = self.client.list_buckets().get("Buckets", [])
             return any(b["Name"] == self.bucket for b in buckets)
         except (ClientError, BotoCoreError) as e:
-            raise RuntimeError(f"Failed to check if bucket exists: {e}") from e
+            raise StorageError(f"Failed to check if bucket exists: {e}") from e
 
     def create_bucket(self):
         try:
             if not self.bucket_exists():
-                region = settings.AWS_REGION
-
                 self.client.create_bucket(
                     Bucket=self.bucket,
-                    CreateBucketConfiguration={"LocationConstraint": region},
+                    CreateBucketConfiguration={
+                        "LocationConstraint": self.settings.AWS_REGION
+                    },
                 )
         except (ClientError, BotoCoreError) as e:
-            raise RuntimeError(f"Failed to create bucket '{self.bucket}': {e}") from e
+            raise StorageError(f"Failed to create bucket '{self.bucket}': {e}") from e
 
     def list_buckets(self):
         try:
             response = self.client.list_buckets()
             return [b["Name"] for b in response.get("Buckets", [])]
         except (ClientError, BotoCoreError) as e:
-            raise RuntimeError(f"Failed to list S3 buckets: {e}") from e
+            raise StorageError(f"Failed to list S3 buckets: {e}") from e
 
     def list_objects(self):
         try:
             response = self.client.list_objects_v2(Bucket=self.bucket)
             return [o["Key"] for o in response.get("Contents", [])]
         except (ClientError, BotoCoreError) as e:
-            raise RuntimeError(f"Failed to list objects in bucket '{self.bucket}': {e}") from e
+            raise StorageError(f"Failed to list objects in bucket '{self.bucket}': {e}") from e

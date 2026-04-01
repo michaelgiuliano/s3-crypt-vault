@@ -12,7 +12,7 @@ def test_encryption_decryption_workflow():
 
     encrypted = encryptor.encrypt(secret_message)
     assert encrypted != secret_message
-    
+
     decrypted = encryptor.decrypt(encrypted)
     assert decrypted == secret_message
 

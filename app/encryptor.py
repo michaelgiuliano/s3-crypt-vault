@@ -18,7 +18,7 @@ class FileEncryptor:
 
     This class implements single-key encryption.
     Use envelope encryption for new data.
-    
+
     Handles AES-256 GCM encryption and decryption.
     Ensures both data confidentiality and integrity (AEAD).
     """
@@ -54,7 +54,7 @@ class FileEncryptor:
         key_path = Path(path)
         with key_path.open("wb") as f:
             f.write(self.key)
-        
+
         # Security: Only the owner can read/write this file
         key_path.chmod(0o600)
 
@@ -66,9 +66,9 @@ class FileEncryptor:
         key_path = Path(path)
         if not key_path.exists():
             raise FileNotFoundError(f"Key file not found at: {path}")
-        
+
         return cls(key=key_path.read_bytes())
-    
+
     @staticmethod
     def is_legacy_format(data: bytes) -> bool:
         """

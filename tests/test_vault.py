@@ -2,8 +2,8 @@ import os
 import pytest
 
 from app.encryptor import FileEncryptor
+from app.exceptions import DecryptionError, PasswordRequiredError
 from app.vault import CryptVault
-from app.crypto.envelope import encrypt as encrypt_v2
 
 
 @pytest.fixture
@@ -20,20 +20,18 @@ def vault(tmp_path):
     return CryptVault(key_path=key_file)
 
 
-def test_vault_encrypt_upload_download(vault, tmp_path, monkeypatch):
-
-    monkeypatch.setattr(vault, "_get_password", lambda: "test-password")
+def test_vault_encrypt_upload_download(vault, tmp_path):
 
     test_file = tmp_path / "secret.txt"
     original_content = b"super secret vault data"
 
     test_file.write_bytes(original_content)
 
-    object_key = vault.upload_file(str(test_file))
+    object_key = vault.upload_file(str(test_file), "test-password")
 
     output_file = tmp_path / "downloaded.txt"
 
-    vault.download_file(object_key, str(output_file))
+    vault.download_file(object_key, str(output_file), "test-password")
 
     downloaded_content = output_file.read_bytes()
 
@@ -41,7 +39,7 @@ def test_vault_encrypt_upload_download(vault, tmp_path, monkeypatch):
 
 
 def test_backward_compatibility(vault, tmp_path):
-    
+
     test_file = tmp_path / "legacy.txt"
     content = b"legacy data"
     test_file.write_bytes(content)
@@ -57,16 +55,33 @@ def test_backward_compatibility(vault, tmp_path):
     assert output.read_bytes() == content
 
 
-def test_v2_flow(vault, tmp_path, monkeypatch):
-    monkeypatch.setattr(vault, "_get_password", lambda: "test-password")
-
+def test_v2_flow(vault, tmp_path):
     data = b"hello"
-    encrypted = encrypt_v2("test-password", data)
 
-    key = "v2.enc"
-    vault.s3.upload_bytes(key, encrypted)
-
+    object_key = vault.upload_bytes("file.txt", data, "test-password")
     output = tmp_path / "out.txt"
-    vault.download_file(key, str(output))
+
+    vault.download_file(object_key, str(output), "test-password")
 
     assert output.read_bytes() == data
+
+
+def test_v2_requires_password(vault):
+    data = b"secret"
+    encrypted = vault.encrypt_bytes(data, "test-password")
+
+    with pytest.raises(PasswordRequiredError):
+        vault.decrypt_bytes(encrypted)
+
+
+def test_v2_wrong_password(vault):
+    data = b"secret"
+    encrypted = vault.encrypt_bytes(data, "correct-password")
+
+    with pytest.raises(DecryptionError):
+        vault.decrypt_bytes(encrypted, "wrong-password")
+
+
+def test_upload_file_not_found(vault):
+    with pytest.raises(FileNotFoundError):
+        vault.upload_file("nonexistent.txt", "password")

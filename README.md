@@ -3,7 +3,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://github.com/michaelgiuliano/s3-crypt-vault/actions/workflows/ci.yml/badge.svg)
 
->A secure client-side encrypted storage system for AWS S3.
+>**A secure client-side encrypted storage system for AWS S3.**
 
 
 ## Project Overview
@@ -30,6 +30,9 @@ The system is composed of multiple layers, each with a clear responsibility:
 
 - **Storage Layer (`S3Client`)**  
   Handles communication with AWS S3 (or LocalStack in development).
+
+- **Error Handling Layer**  
+  Provides domain-specific exceptions to ensure consistent error propagation across components.
 
 ### Data Flow
 
@@ -315,6 +318,7 @@ s3-crypt-vault/
 │   ├───cli.py
 │   ├───config.py
 │   ├───encryptor.py
+│   ├───exceptions.py
 │   ├───s3_client.py
 │   └───vault.py
 ├───tests/
