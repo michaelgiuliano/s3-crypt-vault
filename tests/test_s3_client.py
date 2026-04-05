@@ -14,7 +14,10 @@ def s3_client():
     client = S3Client(settings)
     client.create_bucket()
 
-    return client
+    yield client
+
+    for key in client.list_objects():
+        client.client.delete_object(Bucket=client.bucket, Key=key)
 
 
 def test_upload_download_cycle(s3_client):
