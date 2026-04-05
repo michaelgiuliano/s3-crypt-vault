@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import Response
 
 from app.api.dependencies import get_vault
-from app.api.schemas import FileListResponse, UploadResponse
+from app.api.schemas import FileListResponse, UploadResponse, DownloadRequest
 from app.vault import CryptVault
 
 
@@ -29,3 +30,23 @@ def upload_file(
     vault.upload_bytes(object_key, data, password)
 
     return UploadResponse(object_key=object_key)
+
+
+@router.post("/files/{key}/download")
+def download_file(
+    key: str,
+    body: DownloadRequest,
+    vault: CryptVault = Depends(get_vault),
+):
+    if not vault.s3.object_exists(key):
+        raise HTTPException(status_code=404, detail=f"File '{key}' not found.")
+
+    data = vault.download_bytes(key, body.password)
+
+    filename = key.removesuffix(".enc")
+
+    return Response(
+        content=data,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
