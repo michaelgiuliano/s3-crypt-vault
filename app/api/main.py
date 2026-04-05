@@ -6,6 +6,7 @@ from app.api.exceptions import (
     storage_error_handler,
     generic_error_handler,
 )
+from app.api.routes import router
 from app.exceptions import PasswordRequiredError, DecryptionError, StorageError
 
 
@@ -16,6 +17,7 @@ app.add_exception_handler(DecryptionError, decryption_error_handler)
 app.add_exception_handler(StorageError, storage_error_handler)
 app.add_exception_handler(Exception, generic_error_handler)
 
+app.include_router(router)
 
 @app.get("/health")
 def health():
