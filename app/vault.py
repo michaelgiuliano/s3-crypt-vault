@@ -3,7 +3,6 @@ from cryptography.exceptions import InvalidTag
 
 from app.encryptor import FileEncryptor
 from app.s3_client import S3Client
-from app.config import Settings
 from app.crypto.envelope import encrypt as encrypt_v2, decrypt as decrypt_v2
 from app.exceptions import PasswordRequiredError, DecryptionError
 
@@ -44,7 +43,10 @@ class CryptVault:
         return self.decrypt_bytes(encrypted, password)
 
     def upload_file(self, file_path: str, object_key: str, password: str) -> None:
-        data = Path(file_path).read_bytes()
+        try:
+            data = Path(file_path).read_bytes()
+        except FileNotFoundError:
+            raise FileNotFoundError(f"File not found: {file_path}")
         self.upload_bytes(object_key, data, password)
 
     def download_file(self, object_key: str, output_path: str, password: str | None = None):
