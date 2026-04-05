@@ -10,7 +10,7 @@ from app.api.routes import router
 from app.exceptions import PasswordRequiredError, DecryptionError, StorageError
 
 
-app = FastAPI(title="S3 Crypt Vault API")
+app = FastAPI(title="S3 Crypt Vault API", version="0.3.0")
 
 app.add_exception_handler(PasswordRequiredError, password_required_handler)
 app.add_exception_handler(DecryptionError, decryption_error_handler)
