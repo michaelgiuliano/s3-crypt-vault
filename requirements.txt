@@ -5,7 +5,13 @@
 #    pip-compile requirements.in
 #
 annotated-doc==0.0.4
-    # via typer
+    # via
+    #   fastapi
+    #   typer
+annotated-types==0.7.0
+    # via pydantic
+anyio==4.13.0
+    # via starlette
 boto3==1.42.78
     # via -r requirements.in
 botocore==1.42.78
@@ -15,11 +21,19 @@ botocore==1.42.78
 cffi==2.0.0
     # via cryptography
 click==8.3.1
-    # via typer
+    # via
+    #   typer
+    #   uvicorn
 colorama==0.4.6
     # via click
 cryptography==46.0.6
     # via -r requirements.in
+fastapi==0.135.3
+    # via -r requirements.in
+h11==0.16.0
+    # via uvicorn
+idna==3.11
+    # via anyio
 jmespath==1.1.0
     # via
     #   boto3
@@ -30,6 +44,10 @@ mdurl==0.1.2
     # via markdown-it-py
 pycparser==3.0
     # via cffi
+pydantic==2.12.5
+    # via fastapi
+pydantic-core==2.41.5
+    # via pydantic
 pygments==2.20.0
     # via rich
 python-dateutil==2.9.0.post0
@@ -44,7 +62,23 @@ shellingham==1.5.4
     # via typer
 six==1.17.0
     # via python-dateutil
+starlette==1.0.0
+    # via fastapi
 typer==0.24.1
     # via -r requirements.in
+typing-extensions==4.15.0
+    # via
+    #   anyio
+    #   fastapi
+    #   pydantic
+    #   pydantic-core
+    #   starlette
+    #   typing-inspection
+typing-inspection==0.4.2
+    # via
+    #   fastapi
+    #   pydantic
 urllib3==2.6.3
     # via botocore
+uvicorn==0.43.0
+    # via -r requirements.in
