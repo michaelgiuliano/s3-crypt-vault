@@ -54,6 +54,8 @@ python-dateutil==2.9.0.post0
     # via botocore
 python-dotenv==1.2.2
     # via -r requirements.in
+python-multipart==0.0.22
+    # via -r requirements.in
 rich==14.3.3
     # via typer
 s3transfer==0.16.0

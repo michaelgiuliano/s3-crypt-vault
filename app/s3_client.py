@@ -28,6 +28,15 @@ class S3Client:
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
         )
 
+    def object_exists(self, key: str) -> bool:
+        try:
+            self.client.head_object(Bucket=self.bucket, Key=key)
+            return True
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "404":
+                return False
+            raise StorageError(f"Failed to check object '{key}': {e}") from e
+
     def upload_bytes(self, key: str, data: bytes):
         """
         Upload raw bytes to S3.
