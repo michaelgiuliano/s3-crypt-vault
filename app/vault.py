@@ -14,11 +14,9 @@ class CryptVault:
     Handles encryption/decryption and interaction with S3 storage.
     """
 
-    def __init__(self, key_path: str = "master.key"):
-        self.settings = Settings()
-        self.encryptor = FileEncryptor.load_key(key_path)
-
-        self.s3 = S3Client(self.settings)
+    def __init__(self, s3: S3Client, encryptor: FileEncryptor):
+        self.s3 = s3
+        self.encryptor = encryptor
 
     def encrypt_bytes(self, data: bytes, password: str) -> bytes:
         return encrypt_v2(password, data)
@@ -37,23 +35,17 @@ class CryptVault:
             except InvalidTag:
                 raise DecryptionError("Invalid key or corrupted data")
 
-    def upload_bytes(self, filename: str, data: bytes, password: str) -> str:
+    def upload_bytes(self, object_key: str, data: bytes, password: str) -> None:
         encrypted = self.encrypt_bytes(data, password)
-        object_key = f"{filename}.enc"
-
         self.s3.upload_bytes(object_key, encrypted)
-
-        return object_key
 
     def download_bytes(self, object_key: str, password: str | None = None) -> bytes:
         encrypted = self.s3.download_bytes(object_key)
         return self.decrypt_bytes(encrypted, password)
 
-    def upload_file(self, file_path: str, password: str):
-        path = Path(file_path)
-        data = path.read_bytes()
-
-        return self.upload_bytes(path.name, data, password)
+    def upload_file(self, file_path: str, object_key: str, password: str) -> None:
+        data = Path(file_path).read_bytes()
+        self.upload_bytes(object_key, data, password)
 
     def download_file(self, object_key: str, output_path: str, password: str | None = None):
         data = self.download_bytes(object_key, password)

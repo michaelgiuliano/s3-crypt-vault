@@ -1,6 +1,20 @@
 # Changelog
 
 
+## v0.3.0 - REST API Layer
+
+- Introduced FastAPI REST API layer with full CRUD operations on encrypted files
+- Refactored `CryptVault` to accept injected dependencies (S3Client, FileEncryptor)
+- Vault is now naming-agnostic — object keys are the caller's responsibility
+- Added dependency injection layer for clean per-request vault construction
+- Added global exception handlers mapping domain errors to HTTP responses
+- Implemented `GET /files`, `POST /files`, `POST /files/{key}/download` endpoints
+- Added `object_exists()` method to S3Client for conflict detection
+- Added `KEY_PATH` configuration for API key file resolution
+- Extended test suite with full API integration tests using FastAPI TestClient
+- Added `python-multipart` and `httpx` dependencies
+
+
 ## v0.2.2 - Core Refactor & API Readiness
 
 - Decoupled configuration from global state

@@ -2,3 +2,7 @@ boto3
 cryptography
 python-dotenv
 typer
+fastapi
+uvicorn
+python-multipart
+httpx

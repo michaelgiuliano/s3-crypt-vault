@@ -14,6 +14,8 @@ Files are encrypted locally using **AES-256-GCM** with an envelope encryption mo
 
 The cloud provider never has access to plaintext data, ensuring that encryption and decryption always occur on the client side.
 
+The system exposes two interfaces: a **CLI tool** for direct local usage and a **REST API** for programmatic access.
+
 
 ## Architecture
 
@@ -22,8 +24,11 @@ The system is composed of multiple layers, each with a clear responsibility:
 - **CLI Layer (Typer)**  
   Handles user interaction and command execution.
 
+- **API Layer (FastAPI)**
+  Exposes encrypted storage operations over HTTP.
+
 - **Vault Layer (`CryptVault`)**  
-  Orchestrates encryption and storage operations.
+  Orchestrates encryption and storage operations. Accepts injected dependencies — decoupled from both CLI and API concerns.
 
 - **Encryption Layer**  
   Implements client-side encryption using AES-256-GCM and envelope encryption.
@@ -32,14 +37,14 @@ The system is composed of multiple layers, each with a clear responsibility:
   Handles communication with AWS S3 (or LocalStack in development).
 
 - **Error Handling Layer**  
-  Provides domain-specific exceptions to ensure consistent error propagation across components.
+  Provides domain-specific exceptions mapped consistently to HTTP responses in the API layer.
 
 ### Data Flow
 
 ```
-User Input
+User Input (CLI or HTTP)
  ↓
-CLI (commands)
+CLI / API Layer
  ↓
 Vault (orchestration)
  ↓
@@ -50,7 +55,7 @@ S3 Client
 AWS S3
 ```
 
-This separation ensures that encryption always happens locally before any data is transmitted to the cloud.
+Encryption always happens locally before any data is transmitted to the cloud.
 
 
 ## Security Model
@@ -79,10 +84,11 @@ If the key is lost, the data cannot be recovered.
 
 - **Client-side encryption** using *AES-256-GCM* with envelope encryption and password-based key derivation (`scrypt`).
 - **Zero-knowledge design** – the encryption key never leaves the local environment.
+- **REST API** (FastAPI) for programmatic access to encrypted storage operations.
 - Secure **AWS integration** using environment-based credentials.
 - Local development support with **LocalStack**.
 - Installable CLI tool (**`s3vault`**) for interacting with encrypted storage.
-- **Integration testing** using *pytest*.
+- **Integration testing** using `pytest`, including full API test coverage via FastAPI `TestClient`.
 - **CI pipeline** with GitHub Actions.
 
 
@@ -90,6 +96,7 @@ If the key is lost, the data cannot be recovered.
 
 - **Language**: Python 3.12+
 - **Cloud Provider**: AWS S3
+- **API Framework**: FastAPI + Uvicorn
 - **Infrastructure Emulation**: LocalStack + Docker Compose
 - **Automation**: GitHub Actions (CI)
 - **CLI Framework**: Typer
@@ -102,35 +109,33 @@ Before using the vault on AWS you must have:
 
 - AWS credentials with S3 permissions
 - An S3 bucket to store encrypted files
+- A local encryption key file (`master.key`)
 
-You can create one using the CLI:
+Generate a key:
 ```bash
-s3vault create-bucket
+s3vault init-key
 ```
 
-Or via AWS CLI:
+Create a bucket:
 ```bash
-aws s3 mb s3://your-bucket-name
+s3vault create-bucket
 ```
 
 
 ## Installation
 
 Clone the repository:
-
 ```bash
 git clone https://github.com/michaelgiuliano/s3-crypt-vault.git
 cd s3-crypt-vault
 ```
 
-Install the tool in editable mode:
-
+Install in editable mode:
 ```bash
 pip install -e .
 ```
 
 After installation the CLI command becomes available:
-
 ```bash
 s3vault
 ```
@@ -140,7 +145,6 @@ s3vault
 This project uses `pip-tools` for reproducible dependency management.
 
 To update dependencies:
-
 ```bash
 pip-compile requirements.in
 pip-compile dev-requirements.in
@@ -151,8 +155,6 @@ pip-compile dev-requirements.in
 
 Create a `.env` file based on `.env.example`.
 
-Example configuration:
-
 ```
 AWS_ACCESS_KEY_ID=your_access_key_here
 AWS_SECRET_ACCESS_KEY=your_secret_key_here
@@ -160,10 +162,12 @@ AWS_REGION=eu-north-1
 
 S3_BUCKET_NAME=your-bucket-name-here
 
+KEY_PATH=master.key
+
 USE_LOCALSTACK=true
 ```
 
-When `USE_LOCALSTACK=true`, the tool connects to a local S3 emulator instead of AWS.
+When `USE_LOCALSTACK=true`, both the CLI and API connect to a local S3 emulator instead of AWS.
 
 
 ## Local Development (LocalStack)
@@ -174,11 +178,11 @@ Start the local S3 environment:
 docker-compose up -d
 ```
 
-LocalStack allows the entire workflow to run locally without creating real AWS resources.
+LocalStack emulates the entire AWS S3 workflow locally without creating real cloud resources.
 
 
 ## CLI Usage
-> Note: Upload and download operations require a password for encryption/decryption (v2 format).
+> Note: Upload and download operations require a password for encryption/decryption.
 
 ### Setup
 
@@ -207,6 +211,56 @@ s3vault download secret.txt.enc decrypted.txt
 ```
 
 
+## API Usage
+
+Start the API server:
+```bash
+uvicorn app.api.main:app --reload
+```
+
+Interactive documentation is available at `http://localhost:8000/docs`.
+
+### Endpoints
+
+#### Health check
+```bash
+curl http://localhost:8000/health
+```
+```json
+{"status": "ok"}
+```
+
+#### List encrypted files
+```bash
+curl http://localhost:8000/files
+```
+```json
+{"files": ["secret.txt.enc"]}
+```
+
+#### Upload a file
+```bash
+curl -X POST http://localhost:8000/files \
+  -F "file=@secret.txt" \
+  -F "password=your-password"
+```
+```json
+{"object_key": "secret.txt.enc"}
+```
+
+Returns `409` if the file already exists.
+
+#### Download and decrypt a file
+```bash
+curl -X POST http://localhost:8000/files/secret.txt.enc/download \
+  -H "Content-Type: application/json" \
+  -d '{"password": "your-password"}' \
+  --output decrypted.txt
+```
+
+Returns `400` if the password is wrong, `404` if the file does not exist.
+
+
 ## Encryption Architecture
 
 All files are **encrypted locally** before being uploaded to S3.
@@ -222,63 +276,34 @@ The project uses **AES-256-GCM**, an authenticated encryption mode that ensures:
 Starting from version 0.2.0, the vault uses an envelope encryption scheme:
 
 - A **Data Encryption Key (DEK)** is generated per file
-- A **master key** is derived from a user password using scrypt
+- A **master key** is derived from a user password using `scrypt`
 - The file is encrypted with the DEK (AES-256-GCM)
 - The DEK is encrypted with the master key
 
-This improves:
-
-- Key isolation per file
-- Reduced blast radius in case of compromise
-- No persistent master key stored on disk
+This provides key isolation per file and eliminates any persistent master key stored on disk.
 
 ### Encryption Flow
 
 ```
 File is read locally
         ↓
-A random 12-byte nonce is generated
+Random DEK generated per file
         ↓
-AES-256-GCM encrypts the file
+AES-256-GCM encrypts the file using the DEK
         ↓
-Encryption metadata is structured and stored alongside the ciphertext.
+DEK is encrypted with the password-derived master key
         ↓
-The encrypted object is uploaded to S3
+Structured binary blob (SCV2 format) uploaded to S3
 ```
 
 ### Tamper Detection
 
-*AES-GCM* provides **built-in authentication**.
-
-If even a single bit of ciphertext is modified, decryption will fail with an authentication error.
-
-This behavior is verified by the automated test `test_tamper_detection()`.
-
-### Vault Workflow
-
-The vault layer combines encryption and cloud storage.
-
-Files follow this lifecycle:
-
-```
-file
- ↓
-encrypt locally (AES-256-GCM)
- ↓
-upload encrypted object to S3
- ↓
-download encrypted object
- ↓
-decrypt locally
-```
-
-This workflow is implemented in `app/vault.py` and verified by the end-to-end integration test `test_vault.py`.
+*AES-GCM* provides **built-in authentication**. If even a single bit of ciphertext is modified, decryption will fail with an authentication error. This behavior is verified by the automated test `test_tamper_detection()`.
 
 
 ## Testing
 
 Run the full test suite:
-
 ```bash
 pytest tests/
 ```
@@ -289,14 +314,15 @@ Tests cover:
 - Tamper detection
 - S3 integration using LocalStack
 - End-to-end vault workflow
+- Full API integration tests (upload, download, listing, error cases)
 
 
 ## Continuous Integration
 
 **GitHub Actions** automatically runs:
 
-- Lint checks
-- Integration tests
+- Lint checks (`flake8`)
+- Integration tests (`pytest`)
 - LocalStack environment
 
 On every `push` and `pull` request.
@@ -310,6 +336,13 @@ s3-crypt-vault/
 │   └───workflows/
 │       └───ci.yml
 ├───app/
+│   ├───api/
+│   │   ├───__init__.py
+│   │   ├───dependencies.py
+│   │   ├───exceptions.py
+│   │   ├───main.py
+│   │   ├───routes.py
+│   │   └───schemas.py
 │   ├───crypto/
 │   │   ├───__init__.py
 │   │   ├───envelope.py
@@ -323,6 +356,7 @@ s3-crypt-vault/
 │   └───vault.py
 ├───tests/
 │   ├───__init__.py
+│   ├───test_api.py
 │   ├───test_encryption.py
 │   ├───test_s3_client.py
 │   ├───test_s3_connection.py

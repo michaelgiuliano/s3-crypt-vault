@@ -1,6 +1,6 @@
 [project]
 name = "s3-crypt-vault"
-version = "0.2.2"
+version = "0.3.0"
 description = "Secure client-side encrypted storage system for AWS S3."
 authors = [{name = "Michael Giuliano"}]
 readme = "README.md"
@@ -11,6 +11,10 @@ dependencies = [
     "cryptography",
     "python-dotenv",
     "typer",
+    "fastapi",
+    "uvicorn",
+    "python-multipart",
+    "httpx"
 ]
 
 [project.scripts]
