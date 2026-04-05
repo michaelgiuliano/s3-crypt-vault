@@ -5,3 +5,4 @@ typer
 fastapi
 uvicorn
 python-multipart
+httpx
