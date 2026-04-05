@@ -21,21 +21,17 @@ def vault(tmp_path):
 
 
 def test_vault_encrypt_upload_download(vault, tmp_path):
-
     test_file = tmp_path / "secret.txt"
     original_content = b"super secret vault data"
-
     test_file.write_bytes(original_content)
 
-    object_key = vault.upload_file(str(test_file), "test-password")
+    object_key = "secret.txt.enc"
+    vault.upload_file(str(test_file), object_key, "test-password")
 
     output_file = tmp_path / "downloaded.txt"
-
     vault.download_file(object_key, str(output_file), "test-password")
 
-    downloaded_content = output_file.read_bytes()
-
-    assert downloaded_content == original_content
+    assert output_file.read_bytes() == original_content
 
 
 def test_backward_compatibility(vault, tmp_path):
@@ -58,7 +54,8 @@ def test_backward_compatibility(vault, tmp_path):
 def test_v2_flow(vault, tmp_path):
     data = b"hello"
 
-    object_key = vault.upload_bytes("file.txt", data, "test-password")
+    object_key = "file.txt.enc"
+    vault.upload_bytes(object_key, data, "test-password")
     output = tmp_path / "out.txt"
 
     vault.download_file(object_key, str(output), "test-password")
@@ -84,4 +81,4 @@ def test_v2_wrong_password(vault):
 
 def test_upload_file_not_found(vault):
     with pytest.raises(FileNotFoundError):
-        vault.upload_file("nonexistent.txt", "password")
+        vault.upload_file("nonexistent.txt", "nonexistent.txt.enc", "password")

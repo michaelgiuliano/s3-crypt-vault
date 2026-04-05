@@ -1,5 +1,6 @@
 import typer
 from getpass import getpass
+from pathlib import Path
 
 from app.encryptor import FileEncryptor
 from app.vault import CryptVault
@@ -76,18 +77,18 @@ def upload(file: str, key_path: str = "master.key"):
     """
     Encrypt a file and upload it to S3.
     """
-
     vault = CryptVault(key_path=key_path)
 
     if not vault.s3.bucket_exists():
         typer.echo(
             f"Bucket '{vault.s3.bucket}' does not exist.\n"
-            f"Create it first with: python -m app.cli create-bucket"
+            f"Create it first with: s3vault create-bucket"
         )
         raise typer.Exit(code=1)
 
     password = getpass("Enter password: ")
-    object_key = vault.upload_file(file, password)
+    object_key = f"{Path(file).name}.enc"
+    vault.upload_file(file, object_key, password)
 
     typer.echo(f"Encrypted file uploaded as: {object_key}")
 
