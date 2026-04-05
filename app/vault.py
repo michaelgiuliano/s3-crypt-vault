@@ -53,5 +53,4 @@ class CryptVault:
         data = self.download_bytes(object_key, password)
 
         Path(output_path).write_bytes(data)
-
         return output_path

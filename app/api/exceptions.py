@@ -24,6 +24,11 @@ async def storage_error_handler(request: Request, exc: StorageError):
         content={"detail": str(exc)},
     )
 
+async def file_not_found_handler(request: Request, exc: FileNotFoundError):
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc)},
+    )
 
 async def generic_error_handler(request: Request, exc: Exception):
     if isinstance(exc, HTTPException):
