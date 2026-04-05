@@ -14,11 +14,9 @@ class CryptVault:
     Handles encryption/decryption and interaction with S3 storage.
     """
 
-    def __init__(self, key_path: str = "master.key"):
-        self.settings = Settings()
-        self.encryptor = FileEncryptor.load_key(key_path)
-
-        self.s3 = S3Client(self.settings)
+    def __init__(self, s3: S3Client, encryptor: FileEncryptor):
+        self.s3 = s3
+        self.encryptor = encryptor
 
     def encrypt_bytes(self, data: bytes, password: str) -> bytes:
         return encrypt_v2(password, data)

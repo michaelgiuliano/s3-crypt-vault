@@ -12,6 +12,13 @@ from app.exceptions import PasswordRequiredError
 app = typer.Typer(help="S3 Crypt Vault CLI")
 
 
+def _build_vault(key_path: str) -> CryptVault:
+    settings = Settings()
+    s3 = S3Client(settings)
+    encryptor = FileEncryptor.load_key(key_path)
+    return CryptVault(s3=s3, encryptor=encryptor)
+
+
 @app.command()
 def init_key(path: str = "master.key"):
     """
@@ -77,7 +84,7 @@ def upload(file: str, key_path: str = "master.key"):
     """
     Encrypt a file and upload it to S3.
     """
-    vault = CryptVault(key_path=key_path)
+    vault = _build_vault(key_path)
 
     if not vault.s3.bucket_exists():
         typer.echo(
@@ -98,14 +105,12 @@ def download(object_key: str, output: str, key_path: str = "master.key"):
     """
     Download encrypted object from S3 and decrypt it.
     """
-
-    vault = CryptVault(key_path=key_path)
+    vault = _build_vault(key_path)
 
     try:
         vault.download_file(object_key, output)
     except PasswordRequiredError:
         typer.echo("Password required for encrypted file.")
-
         password = getpass("Enter password: ")
         vault.download_file(object_key, output, password)
 

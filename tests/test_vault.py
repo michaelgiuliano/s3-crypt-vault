@@ -3,12 +3,13 @@ import pytest
 
 from app.encryptor import FileEncryptor
 from app.exceptions import DecryptionError, PasswordRequiredError
+from app.s3_client import S3Client
 from app.vault import CryptVault
+from app.config import Settings
 
 
 @pytest.fixture
 def vault(tmp_path):
-
     os.environ["USE_LOCALSTACK"] = "true"
     os.environ["S3_BUCKET_NAME"] = "test-vault"
 
@@ -17,7 +18,9 @@ def vault(tmp_path):
     encryptor = FileEncryptor()
     encryptor.save_key(key_file)
 
-    return CryptVault(key_path=key_file)
+    settings = Settings()
+    s3 = S3Client(settings)
+    return CryptVault(s3=s3, encryptor=encryptor)
 
 
 def test_vault_encrypt_upload_download(vault, tmp_path):
