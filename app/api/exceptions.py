@@ -1,4 +1,4 @@
-from fastapi import Request
+from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 
 from app.exceptions import PasswordRequiredError, DecryptionError, StorageError
@@ -26,6 +26,8 @@ async def storage_error_handler(request: Request, exc: StorageError):
 
 
 async def generic_error_handler(request: Request, exc: Exception):
+    if isinstance(exc, HTTPException):
+        raise exc
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error"},

@@ -15,7 +15,9 @@ def list_files(vault: CryptVault = Depends(get_vault)):
     return FileListResponse(files=files)
 
 
-@router.post("/files", response_model=UploadResponse, status_code=201)
+@router.post("/files", response_model=UploadResponse, status_code=201, responses={
+    409: {"description": "File already exists"},
+})
 def upload_file(
     file: UploadFile = File(...),
     password: str = Form(...),
@@ -32,7 +34,10 @@ def upload_file(
     return UploadResponse(object_key=object_key)
 
 
-@router.post("/files/{key}/download")
+@router.post("/files/{key}/download", responses={
+    400: {"description": "Invalid password or corrupted data"},
+    404: {"description": "File not found"},
+})
 def download_file(
     key: str,
     body: DownloadRequest,
