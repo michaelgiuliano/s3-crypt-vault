@@ -1,6 +1,15 @@
 # Changelog
 
 
+## v0.3.1 - Bugfixes & Test Hardening
+
+- Fixed missing `s3.create_bucket()` call in `test_vault` fixture causing test failures on clean LocalStack
+- Added teardown to `test_vault` and `test_s3_client` fixtures to prevent cross-test state leakage
+- Removed redundant `test_s3_connection.py` (covered by existing test suite)
+- Wrapped `FileNotFoundError` in `vault.upload_file` and mapped it to HTTP 404 in the API layer
+- Removed dead `Settings` import from `vault.py`
+
+
 ## v0.3.0 - REST API Layer
 
 - Introduced FastAPI REST API layer with full CRUD operations on encrypted files

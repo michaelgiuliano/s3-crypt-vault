@@ -14,13 +14,17 @@ def vault(tmp_path):
     os.environ["S3_BUCKET_NAME"] = "test-vault"
 
     key_file = tmp_path / "test.key"
-
     encryptor = FileEncryptor()
     encryptor.save_key(key_file)
 
     settings = Settings()
     s3 = S3Client(settings)
-    return CryptVault(s3=s3, encryptor=encryptor)
+    s3.create_bucket()
+
+    yield CryptVault(s3=s3, encryptor=encryptor)
+
+    for key in s3.list_objects():
+        s3.client.delete_object(Bucket=s3.bucket, Key=key)
 
 
 def test_vault_encrypt_upload_download(vault, tmp_path):
