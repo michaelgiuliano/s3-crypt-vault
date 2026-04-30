@@ -19,6 +19,30 @@ Client
   -> AWS S3 / LocalStack
 ```
 
+### Upload Flow
+
+```text
+User uploads file + password
+  -> FastAPI receives multipart request
+  -> CryptVault reads file bytes
+  -> scrypt derives a key from the password
+  -> A random data encryption key encrypts the file
+  -> The data encryption key is encrypted with the password-derived key
+  -> S3Client uploads the encrypted SCV2 blob to S3
+```
+
+### Download Flow
+
+```text
+User requests object + password
+  -> FastAPI receives download request
+  -> S3Client downloads encrypted bytes from S3
+  -> CryptVault parses the SCV2 blob
+  -> scrypt derives the key from the password and stored salt
+  -> The data encryption key is decrypted
+  -> The file content is decrypted and returned to the user
+```
+
 ### Main Components
 
 - `app/api/`: FastAPI app, routes, schemas, dependencies, and HTTP error mapping.
@@ -41,6 +65,54 @@ Files are encrypted with AES-256-GCM using envelope encryption:
 7. The encrypted file and encrypted data key are stored together as an `SCV2` blob.
 
 AES-GCM provides both confidentiality and tamper detection. If the ciphertext is modified or the wrong password is used, decryption fails.
+
+## Security Model
+
+This project uses client-side encryption. The application encrypts data before upload, and S3 only stores encrypted blobs.
+
+### Protects Against
+
+- Someone reading raw objects directly from the S3 bucket.
+- Accidental exposure of encrypted files in cloud storage.
+- Tampering with encrypted file contents, because AES-GCM detects modification.
+
+### Does Not Protect Against
+
+- Weak or reused passwords.
+- A compromised machine running the API or CLI.
+- A malicious user who already has the correct password.
+- Loss of the password. There is no recovery mechanism.
+- Full production compliance requirements such as centralized key rotation, audit trails, or access governance.
+
+## Limitations
+
+- Files are processed in memory, so very large file uploads are not ideal.
+- Passwords are supplied per upload/download request and are not managed by a dedicated secret manager.
+- There is no user authentication or authorization layer.
+- There is no database for metadata, ownership, sharing, or access history.
+- Object keys are based on filenames, so duplicate names are rejected instead of versioned.
+- The project focuses on backend architecture and encryption flow, not production-grade identity or compliance.
+
+## Trade-Offs
+
+- Password-based encryption keeps the project simple and easy to run locally, but production systems usually centralize key management.
+- Client-side encryption means S3 never sees plaintext, but the API must handle passwords carefully during each request.
+- LocalStack makes S3 integration testable without AWS costs, but it is still an emulator.
+- Keeping the app stateless makes the backend easier to understand, but limits features like file ownership, audit logs, and sharing.
+- Envelope encryption is more complex than encrypting directly with one key, but it better models real-world encrypted storage systems.
+
+## How I Would Redesign This In Production
+
+If I redesigned this for production, I would keep the same high-level idea but change the operational security model:
+
+- Use AWS KMS to manage master keys instead of deriving all key-encryption keys from user passwords.
+- Use IAM roles instead of static AWS access keys in `.env`.
+- Add key rotation so encrypted data can be re-wrapped with newer KMS keys over time.
+- Add audit logs for upload, download, failed decryption attempts, and administrative actions.
+- Add authentication and authorization so users can only access their own objects.
+- Store metadata in a database, including owner, object key, content type, creation time, and key version.
+- Stream large files instead of reading entire files into memory.
+- Add rate limiting and stronger validation around filenames and object keys.
 
 ## API Endpoints
 
@@ -148,25 +220,25 @@ The tests cover:
 
 ```text
 s3-crypt-vault/
-├── app/
-│   ├── api/
-│   │   ├── dependencies.py
-│   │   ├── exceptions.py
-│   │   ├── main.py
-│   │   ├── routes.py
-│   │   └── schemas.py
-│   ├── crypto/
-│   │   ├── envelope.py
-│   │   └── kdf.py
-│   ├── cli.py
-│   ├── config.py
-│   ├── exceptions.py
-│   ├── s3_client.py
-│   └── vault.py
-├── tests/
-├── docker-compose.yml
-├── pyproject.toml
-└── README.md
+|-- app/
+|   |-- api/
+|   |   |-- dependencies.py
+|   |   |-- exceptions.py
+|   |   |-- main.py
+|   |   |-- routes.py
+|   |   `-- schemas.py
+|   |-- crypto/
+|   |   |-- envelope.py
+|   |   `-- kdf.py
+|   |-- cli.py
+|   |-- config.py
+|   |-- exceptions.py
+|   |-- s3_client.py
+|   `-- vault.py
+|-- tests/
+|-- docker-compose.yml
+|-- pyproject.toml
+`-- README.md
 ```
 
 ## Interview Talking Points
@@ -177,7 +249,7 @@ s3-crypt-vault/
 - Envelope encryption gives each file its own random data encryption key.
 - `scrypt` turns a human password into a cryptographic key.
 - AES-GCM detects wrong passwords and tampered ciphertext.
-- The project does not protect against weak passwords, compromised machines, or lost passwords.
+- The project clearly separates learning-project limitations from production concerns.
 
 ## License
 
