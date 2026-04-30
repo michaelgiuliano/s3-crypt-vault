@@ -5,25 +5,20 @@ from fastapi.testclient import TestClient
 from app.api.main import app
 from app.api.dependencies import get_vault
 from app.config import Settings
-from app.encryptor import FileEncryptor
 from app.s3_client import S3Client
 from app.vault import CryptVault
 
 
 @pytest.fixture
-def vault(tmp_path):
+def vault():
     os.environ["USE_LOCALSTACK"] = "true"
     os.environ["S3_BUCKET_NAME"] = "test-vault"
-
-    key_file = tmp_path / "test.key"
-    encryptor = FileEncryptor()
-    encryptor.save_key(key_file)
 
     settings = Settings()
     s3 = S3Client(settings)
     s3.create_bucket()
 
-    yield CryptVault(s3=s3, encryptor=encryptor)
+    yield CryptVault(s3=s3)
 
     for key in s3.list_objects():
         s3.client.delete_object(Bucket=s3.bucket, Key=key)
