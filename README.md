@@ -1,256 +1,198 @@
 # S3 Crypt Vault
+
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![CI](https://github.com/michaelgiuliano/s3-crypt-vault/actions/workflows/ci.yml/badge.svg)
 
->**A secure client-side encrypted storage system for AWS S3.**
+S3 Crypt Vault is a Python backend project that stores files in AWS S3 only after encrypting them locally.
 
-
-## Project Overview
-
-This project implements a **secure storage system** based on client-side encryption and zero-knowledge principles.
-
-Files are encrypted locally using **AES-256-GCM** with an envelope encryption model before being transmitted to AWS S3. Even if the S3 bucket is compromised, the stored data remains unreadable without the local encryption key.
-
-The cloud provider never has access to plaintext data, ensuring that encryption and decryption always occur on the client side.
-
-The system exposes two interfaces: a **CLI tool** for direct local usage and a **REST API** for programmatic access.
-
+The goal is simple: S3 stores encrypted bytes, while the application handles encryption and decryption before data leaves the client side.
 
 ## Architecture
 
-The system is composed of multiple layers, each with a clear responsibility:
-
-- **CLI Layer (Typer)**  
-  Handles user interaction and command execution.
-
-- **API Layer (FastAPI)**
-  Exposes encrypted storage operations over HTTP.
-
-- **Vault Layer (`CryptVault`)**  
-  Orchestrates encryption and storage operations. Accepts injected dependencies — decoupled from both CLI and API concerns.
-
-- **Encryption Layer**  
-  Implements client-side encryption using AES-256-GCM and envelope encryption.
-
-- **Storage Layer (`S3Client`)**  
-  Handles communication with AWS S3 (or LocalStack in development).
-
-- **Error Handling Layer**  
-  Provides domain-specific exceptions mapped consistently to HTTP responses in the API layer.
-
-### Data Flow
-
-```
-User Input (CLI or HTTP)
- ↓
-CLI / API Layer
- ↓
-Vault (orchestration)
- ↓
-Encryption (client-side)
- ↓
-S3 Client
- ↓
-AWS S3
+```text
+Client
+  -> FastAPI routes
+  -> CryptVault service
+  -> Envelope encryption
+  -> S3Client
+  -> AWS S3 / LocalStack
 ```
 
-Encryption always happens locally before any data is transmitted to the cloud.
+### Upload Flow
 
+```text
+User uploads file + password
+  -> FastAPI receives multipart request
+  -> CryptVault reads file bytes
+  -> scrypt derives a key from the password
+  -> A random data encryption key encrypts the file
+  -> The data encryption key is encrypted with the password-derived key
+  -> S3Client uploads the encrypted SCV2 blob to S3
+```
+
+### Download Flow
+
+```text
+User requests object + password
+  -> FastAPI receives download request
+  -> S3Client downloads encrypted bytes from S3
+  -> CryptVault parses the SCV2 blob
+  -> scrypt derives the key from the password and stored salt
+  -> The data encryption key is decrypted
+  -> The file content is decrypted and returned to the user
+```
+
+### Main Components
+
+- `app/api/`: FastAPI app, routes, schemas, dependencies, and HTTP error mapping.
+- `app/vault.py`: service layer that coordinates encryption and S3 operations.
+- `app/crypto/`: password-based envelope encryption and key derivation.
+- `app/s3_client.py`: small wrapper around boto3 S3 operations.
+- `app/cli.py`: command-line interface using the same vault logic.
+- `tests/`: coverage for encryption, vault behavior, S3 integration, and API flows.
+
+## Encryption Design
+
+Files are encrypted with AES-256-GCM using envelope encryption:
+
+1. The user provides a password.
+2. A random salt is generated.
+3. `scrypt` derives a 256-bit key from the password and salt.
+4. A random data encryption key is generated for the file.
+5. The file is encrypted with the data encryption key.
+6. The data encryption key is encrypted with the password-derived key.
+7. The encrypted file and encrypted data key are stored together as an `SCV2` blob.
+
+AES-GCM provides both confidentiality and tamper detection. If the ciphertext is modified or the wrong password is used, decryption fails.
 
 ## Security Model
 
-This project follows a zero-knowledge architecture:
+This project uses client-side encryption. The application encrypts data before upload, and S3 only stores encrypted blobs.
 
-### What it protects against
+### Protects Against
 
-- Compromise of the S3 bucket
-- Unauthorized access to stored objects
-- Data leakage from cloud provider
+- Someone reading raw objects directly from the S3 bucket.
+- Accidental exposure of encrypted files in cloud storage.
+- Tampering with encrypted file contents, because AES-GCM detects modification.
 
-### What it does NOT protect against
+### Does Not Protect Against
 
-- Loss or theft of the encryption key
-- Compromise of the local machine
-- Weak user key management practices
+- Weak or reused passwords.
+- A compromised machine running the API or CLI.
+- A malicious user who already has the correct password.
+- Loss of the password. There is no recovery mechanism.
+- Full production compliance requirements such as centralized key rotation, audit trails, or access governance.
 
-### Key Responsibility
+## Limitations
 
-The user is fully responsible for securely storing the encryption key.
-If the key is lost, the data cannot be recovered.
+- Files are processed in memory, so very large file uploads are not ideal.
+- Passwords are supplied per upload/download request and are not managed by a dedicated secret manager.
+- There is no user authentication or authorization layer.
+- There is no database for metadata, ownership, sharing, or access history.
+- Object keys are based on filenames, so duplicate names are rejected instead of versioned.
+- The project focuses on backend architecture and encryption flow, not production-grade identity or compliance.
 
+## Trade-Offs
 
-## Features
+- Password-based encryption keeps the project simple and easy to run locally, but production systems usually centralize key management.
+- Client-side encryption means S3 never sees plaintext, but the API must handle passwords carefully during each request.
+- LocalStack makes S3 integration testable without AWS costs, but it is still an emulator.
+- Keeping the app stateless makes the backend easier to understand, but limits features like file ownership, audit logs, and sharing.
+- Envelope encryption is more complex than encrypting directly with one key, but it better models real-world encrypted storage systems.
 
-- **Client-side encryption** using *AES-256-GCM* with envelope encryption and password-based key derivation (`scrypt`).
-- **Zero-knowledge design** – the encryption key never leaves the local environment.
-- **REST API** (FastAPI) for programmatic access to encrypted storage operations.
-- Secure **AWS integration** using environment-based credentials.
-- Local development support with **LocalStack**.
-- Installable CLI tool (**`s3vault`**) for interacting with encrypted storage.
-- **Integration testing** using `pytest`, including full API test coverage via FastAPI `TestClient`.
-- **CI pipeline** with GitHub Actions.
+## How I Would Redesign This In Production
 
+If I redesigned this for production, I would keep the same high-level idea but change the operational security model:
 
-## Technical Stack
+- Use AWS KMS to manage master keys instead of deriving all key-encryption keys from user passwords.
+- Use IAM roles instead of static AWS access keys in `.env`.
+- Add key rotation so encrypted data can be re-wrapped with newer KMS keys over time.
+- Add audit logs for upload, download, failed decryption attempts, and administrative actions.
+- Add authentication and authorization so users can only access their own objects.
+- Store metadata in a database, including owner, object key, content type, creation time, and key version.
+- Stream large files instead of reading entire files into memory.
+- Add rate limiting and stronger validation around filenames and object keys.
 
-- **Language**: Python 3.12+
-- **Cloud Provider**: AWS S3
-- **API Framework**: FastAPI + Uvicorn
-- **Infrastructure Emulation**: LocalStack + Docker Compose
-- **Automation**: GitHub Actions (CI)
-- **CLI Framework**: Typer
-- **Testing**: Pytest
+## API Endpoints
 
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/health` | Health check |
+| `GET` | `/files` | List encrypted objects in the bucket |
+| `POST` | `/files` | Upload and encrypt a file |
+| `POST` | `/files/{key}/download` | Download and decrypt a file |
 
-## Prerequisites
+## Setup
 
-Before using the vault on AWS you must have:
+Install dependencies:
 
-- AWS credentials with S3 permissions
-- An S3 bucket to store encrypted files
-- A local encryption key file (`master.key`)
-
-Generate a key:
-```bash
-s3vault init-key
-```
-
-Create a bucket:
-```bash
-s3vault create-bucket
-```
-
-
-## Installation
-
-Clone the repository:
-```bash
-git clone https://github.com/michaelgiuliano/s3-crypt-vault.git
-cd s3-crypt-vault
-```
-
-Install in editable mode:
 ```bash
 pip install -e .
 ```
 
-After installation the CLI command becomes available:
-```bash
-s3vault
-```
+Create a `.env` file:
 
-### Dependency Management
-
-This project uses `pip-tools` for reproducible dependency management.
-
-To update dependencies:
-```bash
-pip-compile requirements.in
-pip-compile dev-requirements.in
-```
-
-
-## Environment Configuration
-
-Create a `.env` file based on `.env.example`.
-
-```
+```env
 AWS_ACCESS_KEY_ID=your_access_key_here
 AWS_SECRET_ACCESS_KEY=your_secret_key_here
 AWS_REGION=eu-north-1
-
-S3_BUCKET_NAME=your-bucket-name-here
-
-KEY_PATH=master.key
-
+S3_BUCKET_NAME=your-bucket_name_here
 USE_LOCALSTACK=true
 ```
 
-When `USE_LOCALSTACK=true`, both the CLI and API connect to a local S3 emulator instead of AWS.
-
-
-## Local Development (LocalStack)
-
-Start the local S3 environment:
+For local development, start LocalStack:
 
 ```bash
 docker-compose up -d
 ```
 
-LocalStack emulates the entire AWS S3 workflow locally without creating real cloud resources.
-
-
-## CLI Usage
-> Note: Upload and download operations require a password for encryption/decryption.
-
-### Setup
+Create the configured bucket:
 
 ```bash
-# Generate a new encryption key:
-s3vault init-key
-
-# Create the configured S3 bucket:
 s3vault create-bucket
-
-# List available buckets:
-s3vault list-buckets
 ```
 
-### Operations
+Run the API:
 
-```bash
-# Upload a file (encrypted locally before upload):
-s3vault upload secret.txt
-
-# List encrypted files stored in the configured bucket:
-s3vault list-files
-
-# Download and decrypt a file:
-s3vault download secret.txt.enc decrypted.txt
-```
-
-
-## API Usage
-
-Start the API server:
 ```bash
 uvicorn app.api.main:app --reload
 ```
 
-Interactive documentation is available at `http://localhost:8000/docs`.
+Interactive docs are available at `http://localhost:8000/docs`.
 
-### Endpoints
+## CLI Usage
 
-#### Health check
+Upload a file:
+
 ```bash
-curl http://localhost:8000/health
-```
-```json
-{"status": "ok"}
+s3vault upload secret.txt
 ```
 
-#### List encrypted files
+List encrypted files:
+
 ```bash
-curl http://localhost:8000/files
-```
-```json
-{"files": ["secret.txt.enc"]}
+s3vault list-files
 ```
 
-#### Upload a file
+Download and decrypt a file:
+
+```bash
+s3vault download secret.txt.enc decrypted.txt
+```
+
+## API Examples
+
+Upload a file:
+
 ```bash
 curl -X POST http://localhost:8000/files \
   -F "file=@secret.txt" \
   -F "password=your-password"
 ```
-```json
-{"object_key": "secret.txt.enc"}
-```
 
-Returns `409` if the file already exists.
+Download and decrypt a file:
 
-#### Download and decrypt a file
 ```bash
 curl -X POST http://localhost:8000/files/secret.txt.enc/download \
   -H "Content-Type: application/json" \
@@ -258,124 +200,57 @@ curl -X POST http://localhost:8000/files/secret.txt.enc/download \
   --output decrypted.txt
 ```
 
-Returns `400` if the password is wrong, `404` if the file does not exist.
-
-
-## Encryption Architecture
-
-All files are **encrypted locally** before being uploaded to S3.
-
-The project uses **AES-256-GCM**, an authenticated encryption mode that ensures:
-
-- **Confidentiality** – encrypted data cannot be read without the key
-- **Integrity** – tampering with ciphertext is detected
-- **Authenticity** – modified data cannot be successfully decrypted
-
-### v2 Encryption Model (Envelope Encryption)
-
-Starting from version 0.2.0, the vault uses an envelope encryption scheme:
-
-- A **Data Encryption Key (DEK)** is generated per file
-- A **master key** is derived from a user password using `scrypt`
-- The file is encrypted with the DEK (AES-256-GCM)
-- The DEK is encrypted with the master key
-
-This provides key isolation per file and eliminates any persistent master key stored on disk.
-
-### Encryption Flow
-
-```
-File is read locally
-        ↓
-Random DEK generated per file
-        ↓
-AES-256-GCM encrypts the file using the DEK
-        ↓
-DEK is encrypted with the password-derived master key
-        ↓
-Structured binary blob (SCV2 format) uploaded to S3
-```
-
-### Tamper Detection
-
-*AES-GCM* provides **built-in authentication**. If even a single bit of ciphertext is modified, decryption will fail with an authentication error. This behavior is verified by the automated test `test_tamper_detection()`.
-
-
 ## Testing
 
-Run the full test suite:
+Run the test suite:
+
 ```bash
 pytest tests/
 ```
 
-Tests cover:
+The tests cover:
 
-- Encryption and decryption correctness
-- Tamper detection
-- S3 integration using LocalStack
-- End-to-end vault workflow
-- Full API integration tests (upload, download, listing, error cases)
-
-
-## Continuous Integration
-
-**GitHub Actions** automatically runs:
-
-- Lint checks (`flake8`)
-- Integration tests (`pytest`)
-- LocalStack environment
-
-On every `push` and `pull` request.
-
+- Envelope encryption round trips
+- Wrong-password and tamper detection
+- Vault upload/download workflow
+- S3 integration through LocalStack
+- FastAPI upload, download, list, and error responses
 
 ## Project Structure
 
-```
+```text
 s3-crypt-vault/
-├───.github/
-│   └───workflows/
-│       └───ci.yml
-├───app/
-│   ├───api/
-│   │   ├───__init__.py
-│   │   ├───dependencies.py
-│   │   ├───exceptions.py
-│   │   ├───main.py
-│   │   ├───routes.py
-│   │   └───schemas.py
-│   ├───crypto/
-│   │   ├───__init__.py
-│   │   ├───envelope.py
-│   │   └───kdf.py
-│   ├───__init__.py
-│   ├───cli.py
-│   ├───config.py
-│   ├───encryptor.py
-│   ├───exceptions.py
-│   ├───s3_client.py
-│   └───vault.py
-├───tests/
-│   ├───__init__.py
-│   ├───test_api.py
-│   ├───test_encryption.py
-│   ├───test_s3_client.py
-│   ├───test_s3_connection.py
-│   └───test_vault.py
-├───.env.example
-├───.gitignore
-├───CHANGELOG.md
-├───dev-requirements.in
-├───dev-requirements.txt
-├───docker-compose.yml
-├───LICENSE
-├───pyproject.toml
-├───README.md
-├───requirements.in
-└───requirements.txt
+|-- app/
+|   |-- api/
+|   |   |-- dependencies.py
+|   |   |-- exceptions.py
+|   |   |-- main.py
+|   |   |-- routes.py
+|   |   `-- schemas.py
+|   |-- crypto/
+|   |   |-- envelope.py
+|   |   `-- kdf.py
+|   |-- cli.py
+|   |-- config.py
+|   |-- exceptions.py
+|   |-- s3_client.py
+|   `-- vault.py
+|-- tests/
+|-- docker-compose.yml
+|-- pyproject.toml
+`-- README.md
 ```
+
+## Interview Talking Points
+
+- The system uses client-side encryption so plaintext is never stored in S3.
+- FastAPI handles HTTP concerns, while `CryptVault` contains the backend workflow.
+- `S3Client` isolates boto3 calls from the rest of the application.
+- Envelope encryption gives each file its own random data encryption key.
+- `scrypt` turns a human password into a cryptographic key.
+- AES-GCM detects wrong passwords and tampered ciphertext.
+- The project clearly separates learning-project limitations from production concerns.
 
 ## License
 
 This project is licensed under the MIT License.
-
-You are free to use, modify, and distribute this software with proper attribution. See the LICENSE file for the full license text.
