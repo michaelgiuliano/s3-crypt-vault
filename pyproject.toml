@@ -1,6 +1,6 @@
 [project]
 name = "s3-crypt-vault"
-version = "0.3.1"
+version = "0.4.0"
 description = "Secure client-side encrypted storage system for AWS S3."
 authors = [{name = "Michael Giuliano"}]
 readme = "README.md"
@@ -23,3 +23,15 @@ s3vault = "app.cli:app"
 [tool.setuptools.packages.find]
 include = ["app*"]
 exclude = ["volume*", "tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
+norecursedirs = [
+    ".git",
+    ".venv",
+    ".pytest_cache",
+    ".pytest-tmp",
+    "tmp-pytest*",
+    "volume",
+]

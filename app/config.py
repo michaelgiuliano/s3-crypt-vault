@@ -37,10 +37,6 @@ class Settings:
             )
 
     @property
-    def KEY_PATH(self):
-        return os.getenv("KEY_PATH", "master.key")
-
-    @property
     def AWS_REGION(self):
         return self._get_required("AWS_REGION")
 

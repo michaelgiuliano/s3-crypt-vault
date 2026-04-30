@@ -2,33 +2,18 @@ import typer
 from getpass import getpass
 from pathlib import Path
 
-from app.encryptor import FileEncryptor
 from app.vault import CryptVault
 from app.s3_client import S3Client
 from app.config import Settings
-from app.exceptions import PasswordRequiredError
 
 
 app = typer.Typer(help="S3 Crypt Vault CLI")
 
 
-def _build_vault(key_path: str) -> CryptVault:
+def _build_vault() -> CryptVault:
     settings = Settings()
     s3 = S3Client(settings)
-    encryptor = FileEncryptor.load_key(key_path)
-    return CryptVault(s3=s3, encryptor=encryptor)
-
-
-@app.command()
-def init_key(path: str = "master.key"):
-    """
-    Generate a new encryption key.
-    """
-
-    encryptor = FileEncryptor()
-    encryptor.save_key(path)
-
-    typer.echo(f"Encryption key generated at: {path}")
+    return CryptVault(s3=s3)
 
 
 @app.command()
@@ -80,11 +65,11 @@ def list_files():
 
 
 @app.command()
-def upload(file: str, key_path: str = "master.key"):
+def upload(file: str):
     """
     Encrypt a file and upload it to S3.
     """
-    vault = _build_vault(key_path)
+    vault = _build_vault()
 
     if not vault.s3.bucket_exists():
         typer.echo(
@@ -101,18 +86,14 @@ def upload(file: str, key_path: str = "master.key"):
 
 
 @app.command()
-def download(object_key: str, output: str, key_path: str = "master.key"):
+def download(object_key: str, output: str):
     """
     Download encrypted object from S3 and decrypt it.
     """
-    vault = _build_vault(key_path)
+    vault = _build_vault()
 
-    try:
-        vault.download_file(object_key, output)
-    except PasswordRequiredError:
-        typer.echo("Password required for encrypted file.")
-        password = getpass("Enter password: ")
-        vault.download_file(object_key, output, password)
+    password = getpass("Enter password: ")
+    vault.download_file(object_key, output, password)
 
     typer.echo(f"File downloaded and decrypted to: {output}")
 

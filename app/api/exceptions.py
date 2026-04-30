@@ -1,14 +1,7 @@
 from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 
-from app.exceptions import PasswordRequiredError, DecryptionError, StorageError
-
-
-async def password_required_handler(request: Request, exc: PasswordRequiredError):
-    return JSONResponse(
-        status_code=400,
-        content={"detail": str(exc)},
-    )
+from app.exceptions import DecryptionError, StorageError
 
 
 async def decryption_error_handler(request: Request, exc: DecryptionError):
