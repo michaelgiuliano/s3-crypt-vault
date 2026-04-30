@@ -1,6 +1,17 @@
 # Changelog
 
 
+## v0.4.0 - Legacy Key Flow Removal
+
+- Removed the legacy `master.key` / `FileEncryptor` encryption path from the main application flow
+- Made password-based envelope encryption the single primary design for uploads and downloads
+- Simplified `CryptVault`, FastAPI dependencies, CLI commands, and configuration around the v2 encryption model
+- Removed the `init-key` command and `KEY_PATH` configuration from normal setup
+- Updated tests to validate the envelope encryption flow without legacy key fixtures
+- Improved pytest configuration for predictable test discovery on Windows
+- Expanded README with architecture flow diagrams, security model, limitations, trade-offs, and production redesign notes
+
+
 ## v0.3.1 - Bugfixes & Test Hardening
 
 - Fixed missing `s3.create_bucket()` call in `test_vault` fixture causing test failures on clean LocalStack
